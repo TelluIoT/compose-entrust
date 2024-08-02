@@ -1,0 +1,19 @@
+services:
+  mqtt:
+    build: ./mqtt
+    ports:
+      - "1883:1883"
+      - "15672:15672"
+      - "5672:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: lapin
+      RABBITMQ_DEFAULT_PASS: lapin
+    restart: unless-stopped
+
+  producer:
+    build: ./gateway-mqtt
+    command: [ "python", "send.py" ]
+    depends_on:
+      - mqtt
+
+volumes:
