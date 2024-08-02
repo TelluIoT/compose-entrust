@@ -1,3 +1,4 @@
+version: "3.7"
 services:
   mqtt:
     build: ./mqtt
@@ -6,8 +7,8 @@ services:
       - "15674:15672"
       - "5674:5672"
     environment:
-      RABBITMQ_DEFAULT_USER: lapin
-      RABBITMQ_DEFAULT_PASS: lapin
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
     restart: unless-stopped
 
   producer:
