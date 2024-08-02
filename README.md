@@ -10,7 +10,7 @@ Use the following command in an appropriate terminal in the root folder of the r
 1. docker-compose build
 2. docker-compose up (Optionally with -d to detach the STDOUT from each container from the terminal)
 
-# Copy repository to research project server
+# Copy repository to research project server (not possible to pull directly from github as-is)
 1. Create a tarball of the repository locally (I've done it in Ubuntu by accessing the local repository through the /mnt/c/<path to repo>:
    ```
    tar czf compose-entrust.tar.gz compose-entrust
@@ -19,7 +19,15 @@ Use the following command in an appropriate terminal in the root folder of the r
    ```
    scp -i ~/.ssh/eratosthenes.pem compose-entrust.tar.gz ubuntu@ec2-3-254-120-13.eu-west-1.compute.amazonaws.com:entrust
    ```
-
+3. SSH into the remote server
+   ```
+   ssh -i ~/.ssh/eratosthenes.pem ubuntu@ec2-3-254-120-13.eu-west-1.compute.amazonaws.com
+   ```
+4. Extract the tarball
+   ```
+   cd entrust
+   tar xzf compose-entrust.tar.gz
+   ```
 
 # Architecture
 
