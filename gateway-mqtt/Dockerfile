@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . /app
 
 # Install the required Python packages
-RUN pip install --no-cache-dir pika
+RUN pip install paho-mqtt
 
 # Command to run your application (you can adjust this based on your script)
 # For a producer (send.py):
