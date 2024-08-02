@@ -8,7 +8,7 @@ This repository contains a docker-compose setup intended for use toward the ENTR
 Use the following command in an appropriate terminal in the root folder of the repository:
 
 1. docker-compose build
-2. docker-compose up (Optionally with -d to detach the STDOUT from each container from the terminal)
+2. docker-compose up -d
 
 # Copy repository to research project server (not possible to pull directly from github as-is)
 1. Create a tarball of the repository locally (I've done it in Ubuntu by accessing the local repository through the /mnt/c/<path to repo>:
