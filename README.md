@@ -6,6 +6,7 @@ This repository contains a docker-compose setup intended for use toward the ENTR
 
 # Deploy
 Use the following command in an appropriate terminal in the root folder of the repository:
+You might need to run with "sudo" prefix.
 
 1. docker-compose build
 2. docker-compose up -d
