@@ -17,7 +17,7 @@ Use the following command in an appropriate terminal in the root folder of the r
    ```
 2. Push the tarball to the AWS server (requires ssh set up according to https://telludoc.atlassian.net/wiki/spaces/TDO/pages/2675179619/AWS+Server+for+R+I+projects)
    ```
-   scp -i ~/.ssh/eratosthenes.pem directory.tar.gz ubuntu@ec2-3-254-120-13.eu-west-1.compute.amazonaws.com:/path/to/remote/directory
+   scp -i ~/.ssh/eratosthenes.pem compose-entrust.tar.gz ubuntu@ec2-3-254-120-13.eu-west-1.compute.amazonaws.com:entrust
    ```
 
 
