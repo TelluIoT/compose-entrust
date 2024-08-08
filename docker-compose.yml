@@ -3,7 +3,7 @@ services:
   mqtt:
     build: ./mqtt
     ports:
-      - "1885:1883"
+      - "1883:1883"
       - "15674:15672"
       - "5674:5672"
     environment:
@@ -14,6 +14,6 @@ services:
 # "Producer" can be enabled to trigger a simple MQTT message to the RabbitMQ component
   producer:
     build: ./gateway-mqtt
-    command: [ "python", "send.py" ]
+    command: [ "python", "send.py"]
     depends_on:
       - mqtt
