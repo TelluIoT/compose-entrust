@@ -11,9 +11,19 @@ services:
       RABBITMQ_DEFAULT_PASS: admin
     restart: unless-stopped
 
-# "Producer" can be enabled to trigger a simple MQTT message to the RabbitMQ component
-  producer:
-    build: ./gateway-mqtt
-    command: [ "python", "send.py" ]
-    depends_on:
-      - mqtt
+# # "Producer" can be enabled to trigger a simple MQTT message to the RabbitMQ component
+#   producer:
+#     build: ./gateway-mqtt
+#     command: [ "python", "send.py" ]
+#     depends_on:
+#       - mqtt
+
+# onboarding server
+  onboarding-server:
+    build: ./onboarding-server
+    ports:
+      - "3010:3000"
+    volumes:
+      - ./onboarding-server:/app
+      - /app/node_modules
+    command: npm start
