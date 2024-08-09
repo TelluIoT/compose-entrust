@@ -17,3 +17,8 @@ services:
     command: [ "python", "send.py"]
     depends_on:
       - mqtt
+
+# 'Cloud' simulates
+  cloud:
+    build: ./cloud
+    command: ["python"]
