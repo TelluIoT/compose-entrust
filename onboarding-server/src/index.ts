@@ -7,11 +7,14 @@ const port = 3000;
 app.use(express.json());
 
 app.get('/getCredentials', (req: Request, res: Response) => {
-  const param: string | undefined = req.query.param as string;
-  if (!param) {
+  const macAddress: string | undefined = req.query.macAddress as string;
+  if (!macAddress) {
     return res.status(400).send('Missing parameter');
   }
-  res.send(param);
+
+  const computedCredentials = { username: macAddress, password: macAddress+'1234' };
+
+  res.send(computedCredentials);
 });
 
 app.listen(port, () => {

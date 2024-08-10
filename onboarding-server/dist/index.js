@@ -9,12 +9,14 @@ const port = 3000;
 // Middleware to parse JSON
 app.use(express_1.default.json());
 app.get('/getCredentials', (req, res) => {
-    const param = req.query.param;
-    if (!param) {
+    const macAddress = req.query.macAddress;
+    if (!macAddress) {
         return res.status(400).send('Missing parameter');
     }
-    res.send(param);
+    const computedCredentials = { username: macAddress, password: macAddress + '1234' };
+    res.send(computedCredentials);
 });
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
+// example call: http://localhost:3010/getCredentials?param=erik134
