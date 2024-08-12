@@ -32,4 +32,14 @@ You might need to run with "sudo" prefix.
 
 # Architecture
 
+
+# Troubleshooting:
+## mqtt-client
+### ConnectionRefusedError: [Errno 111] Connection refused
+Start the container with
+```docker-compose up```
+Afterwards (with the container still) running, in a separate terminal windows run a command:
+```docker exec -it rabbitmq rabbitmq-plugins enable rabbitmq_mqtt```
+This will enable rabbitmq-plugins.
+
 ##### © 2024 Tellu AS

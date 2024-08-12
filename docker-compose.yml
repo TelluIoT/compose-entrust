@@ -1,24 +1,47 @@
-version: "3.7"
+version: '3.8'
+
 services:
-  mqtt:
-    build: ./mqtt
-    ports:
-      - "1883:1883"
-      - "15674:15672"
-      - "5674:5672"
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports: 
+      - "5672:5672" # AMQP port
+      - "15672:15672" # Management UI
+      - '1883:1883' # MQTT port
     environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin
-    restart: unless-stopped
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - rabbitmq_network
 
-# "Producer" can be enabled to trigger a simple MQTT message to the RabbitMQ component
-  producer:
-    build: ./gateway-mqtt
-    command: [ "python", "send.py"]
+  python-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: python-app
     depends_on:
-      - mqtt
+      - rabbitmq
+    volumes:
+      - ./app:/app
+    working_dir: /app
+    command: python manage_rabbitmq.py
+    networks:
+      - rabbitmq_network
 
-# 'Cloud' simulates
-  cloud:
-    build: ./cloud
-    command: ["python"]
+  mqtt-client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mqtt-client
+    depends_on:
+      - python-app
+    volumes:
+      - ./client:/client
+    working_dir: /client
+    command: python mqtt_client.py
+    networks:
+      - rabbitmq_network
+
+networks:
+  rabbitmq_network:
+    driver: bridge
