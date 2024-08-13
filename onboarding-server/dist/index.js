@@ -17,6 +17,7 @@ app.get('/getCredentials', async (req, res) => {
     // TODO: connect to RabbitMQ container with HTTP API and create user with the new credentials
     const onboardingServer = new OnboardingServer();
     const createdUser = await onboardingServer.createUser(computedCredentials.username, computedCredentials.password);
+    const setPermissions = await onboardingServer.setPermissions(computedCredentials.username);
     res.send(computedCredentials);
 });
 app.listen(port, () => {
@@ -54,6 +55,33 @@ class OnboardingServer {
         }
         catch (error) {
             console.error(`Error creating user: ${error.message}`);
+        }
+    }
+    ;
+    async setPermissions(user) {
+        const vhost = '%2F';
+        const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/permissions/${vhost}/${user}`;
+        const permissions = {
+            configure: '.*',
+            write: '.*',
+            read: '.*'
+        };
+        try {
+            const response = await got.put(url, {
+                json: permissions,
+                responseType: 'json',
+                username: RABBITMQ_USERNAME,
+                password: RABBITMQ_PASSWORD,
+            });
+            if (response.statusCode === 201) {
+                console.log('Permissions set successfully!');
+            }
+            else {
+                console.log(`Failed to set permissions: ${response.statusCode} - ${response.body}`);
+            }
+        }
+        catch (error) {
+            console.error(`Error setting permissions: ${error.message}`);
         }
     }
     ;
