@@ -1,0 +1,3 @@
+*.env
+onboarding-server/node_modules
+onboarding-server/dist

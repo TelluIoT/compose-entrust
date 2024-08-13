@@ -1,13 +1,17 @@
 {
     "name": "onboarding-server",
+    "type": "module",
     "version": "1.0.0",
     "main": "dist/index.js",
     "scripts": {
         "build": "tsc",
-        "start": "node dist/index.js"
+        "start": "node --env-file=.env dist/index.js",
+        "build-and-start": "npm run build && node --env-file=.env dist/index.js"
     },
     "dependencies": {
-        "express": "^4.19.2"
+        "dotenv": "^16.4.5",
+        "express": "^4.19.2",
+        "got": "^14.4.2"
     },
     "devDependencies": {
         "@types/express": "^4.17.21",

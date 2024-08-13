@@ -1,7 +1,7 @@
 version: "3.7"
 services:
-  mqtt:
-    build: ./mqtt
+  rabbitmq:
+    build: ./rabbitmq
     ports:
       - "1885:1883"
       - "15674:15672"
