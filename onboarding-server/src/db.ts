@@ -1,6 +1,11 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Convert the current module's URL to a file path
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Function to initialize the SQLite database
 export async function initDB(): Promise<Database<sqlite3.Database, sqlite3.Statement>> {
