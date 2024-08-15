@@ -2,18 +2,17 @@ import express, { Request, Response } from 'express';
 import got from 'got';
 import * as dotenv from 'dotenv';
 
-
 const RABBITMQ_HOST = process.env.RABBITMQ_HOST || 'rabbitmq';
 const RABBITMQ_PORT = process.env.RABBITMQ_PORT || '15672';
 const RABBITMQ_USERNAME = process.env.RABBITMQ_USER || 'guest';
 const RABBITMQ_PASSWORD = process.env.RABBITMQ_PASS || 'guest';
 
+// onboarding server
 const app = express();
 const port = 3015;
 
 // Middleware to parse JSON
 app.use(express.json());
-
 app.get('/getCredentials', async (req: Request, res: Response) => {
   const macAddress: string | undefined = req.query.macAddress as string;
   if (!macAddress) {
@@ -103,52 +102,3 @@ class OnboardingServer {
     }
   };
 }
-
-
-// dotenv.config();
-
-// // Environment variables
-// const RABBITMQ_USER = process.env.RABBITMQ_USER || 'guest';
-// const RABBITMQ_PASS = process.env.RABBITMQ_PASS || 'guest';
-
-
-// Step 1: Create a user
-// const RABBITMQ_HOST = 'localhost';
-// const RABBITMQ_PORT = '15674';
-
-// Step II: Set-up the permissions
-
-
-// const setPermissions = async () => {
-//   const adminUser = 'guest';
-//   const adminPassword = 'guest';
-//   const mqttUser = 'user1';
-//   const vhost = '%2F';
-
-//   const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/permissions/${vhost}/${mqttUser}`;
-//   const permissions = {
-//     configure: '.*',
-//     write: '.*',
-//     read: '.*'
-//   };
-
-//   try {
-//     const response = await got.put(url, {
-//       json: permissions,
-//       responseType: 'json',
-//       username: adminUser,
-//       password: adminPassword,
-//     });
-
-//     if (response.statusCode === 201) {
-//       console.log('Permissions set successfully!');
-//     } else {
-//       console.log(`Failed to set permissions: ${response.statusCode} - ${response.body}`);
-//     }
-//   } catch (error) {
-//     console.error(`Error setting permissions: ${error.message}`);
-//   }
-// };
-
-// // Execute the steps
-// createUser().then(() => setPermissions());
