@@ -27,6 +27,7 @@ app.get('/register', async (req, res) => {
     }
     res.status(201).json({ message: 'Gateway added successfully!', computedSecret });
 });
+//endpoint on 3010: getCredentials
 app.get('/getCredentials', async (req, res) => {
     const macAddress = req.query.macAddress;
     if (!macAddress) {
@@ -38,6 +39,7 @@ app.get('/getCredentials', async (req, res) => {
     const setPermissions = await onboardingServer.setPermissions(mqttCredentials.username);
     res.status(200).json({ mqttCredentials });
 });
+//endpoint on 3010: Claim (device)
 app.get("/Claim", async (req, res) => {
     const macAddress = req.query.macAddress;
     if (!macAddress) {
@@ -48,6 +50,7 @@ app.get("/Claim", async (req, res) => {
     }
     console.log('Endpoint /Claim executed command.');
 });
+// endpoint on 3010: Unclaim (device)
 app.get("/Unclaim", async (req, res) => {
     const macAddress = req.query.macAddress;
     if (!macAddress) {
@@ -64,7 +67,9 @@ app.get("/Unclaim", async (req, res) => {
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
-// example call: http://localhost:3010/getCredentials?param=erik134
+// example call (getCredentials): http://localhost:3010/getCredentials?macAddress=erik134
+// example call (Unclaim): http://localhost:3010/Claim?macAddress=erik134
+// example call (Unclaim): http://localhost:3010/Unclaim?macAddress=erik134
 class OnboardingServer {
     // private readonly blabla;
     // constructor() {

@@ -32,4 +32,42 @@ You might need to run with "sudo" prefix.
 
 # Architecture
 
+# Deploying on localhost
+1. Navigate to onboarding-server directory
+```
+cd onboarding server
+```
+2. Install dependencies
+```
+npm install
+```
+3. Execute npm build-and-start command
+```
+npm run build-and-start
+```
+
+# Workflow
+## 1. Register (preDeploy)
+```
+http://localhost:3010/register?macAddress=user2
+```
+Registers a new user in the sqlite database (generating new secret)
+
+## 2. Set up to pair
+```
+http://localhost:3010/Claim?macAddress=user2
+```
+Changes the entry claimRequested to True in the database (pairing mode)
+
+## 3. Get Credentials
+```
+http://localhost:3010/getCredentials?macAddress=user2
+```
+Registers new user in the RabbbitMQ database.
+
+## 4. Unclaim
+```
+```
+Unclaim a device and deletes it from the RabbitMQ database
+
 ##### © 2024 Tellu AS

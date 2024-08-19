@@ -14,6 +14,8 @@ const db = await initDB();
 
 // Middleware to parse JSON
 app.use(express.json());
+
+//endpoint 3010: registers new users in the .sqlite database
 app.get('/register', async (req: Request, res: Response) => {
   const macAddress: string | undefined = req.query.macAddress as string;
   if (!macAddress) {
@@ -36,42 +38,57 @@ app.get('/register', async (req: Request, res: Response) => {
   res.status(201).json({ message: 'Gateway added successfully!', computedSecret });
 });
 
+//endpoint on 3010: getCredentials
 app.get('/getCredentials', async (req: Request, res: Response) => {
   const macAddress: string | undefined = req.query.macAddress as string;
+  const secret: string | undefined = req.query.secret as string;
   if (!macAddress) {
     return res.status(400).json({ error: 'Missing parameter' });
   }
-
+  // TODO: check if macAddress==secret
+  // TODO: check if claim==0
+  // TODO: check if Claimrequested==1
   const mqttCredentials = { username: macAddress, password: macAddress+'1234' };
   const onboardingServer = new OnboardingServer();
   const createdUser = await onboardingServer.createUser(mqttCredentials.username, mqttCredentials.password);
   const setPermissions = await onboardingServer.setPermissions(mqttCredentials.username)
 
+  // TODO: claim=1
+  // TODO: claimRequested==0
   res.status(200).json({ mqttCredentials });
 });
 
+//endpoint on 3010: Claim (device)
+// Called by the customer admin when assigning the gateway
+// to the acccount.
 app.get("/Claim", async(req: Request, res: Response) => {
   const macAddress: string | undefined = req.query.macAddress as string;
+  const secret: string | undefined = req.query.secret as string;
   if (!macAddress) {
     return res.status(400).send('Missing parameterss')
-  // TODO: Add an autorization
-  // If authorized: claim device
-  // Else: Reject
+  // TODO: check if not secret
+  
+  // TODO: check if macAddress==secret
+  // TODO: check if claimRequest==0
+  // TODO: check if claim==0
+  // TODO: set claimRequest=1
   }
   console.log('Endpoint /Claim executed command.')
 });
 
+// endpoint on 3010: Unclaim (device)
 app.get("/Unclaim", async(req: Request, res: Response) => {
   const macAddress: string | undefined = req.query.macAddress as string;
+  const secret: string | undefined = req.query.secret as string;
   if (!macAddress) {
-    return res.status(400).send('Missing parameterss')
-  // TODO: Add an autorization
-  // If authorized: claim device
-  // Else: Reject
-  }
-  // Todo: Check if device was claimed
-  // If claimed: unclaim
-  // Else: Reject
+    return res.status(400).send('Missing parameterss')}
+  // TODO: check if not secret
+  
+  // TODO: check if macAddress==secret
+  // TODO: check if claimRequest==0
+  // TODO: check if claim==1
+  // TODO: Delete from RabbitMQ database
+  // TODO: set claim=0
   console.log('Endpoint /Unclaim executed command.')
 });
 
@@ -80,7 +97,10 @@ app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
-// example call: http://localhost:3010/getCredentials?param=erik134
+// Step I: http://localhost:3010/register?macAddress=user2
+// Step II: http://localhost:3010/Claim?macAddress=user2
+// Step III: http://localhost:3010/getCredentials?macAddress=user2
+// Step IV: http://localhost:3010/Claim?macAddress=user2
 
 
 class OnboardingServer {
