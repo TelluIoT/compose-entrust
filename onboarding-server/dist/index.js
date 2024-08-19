@@ -14,11 +14,33 @@ app.get('/getCredentials', async (req, res) => {
         return res.status(400).send('Missing parameter');
     }
     const computedCredentials = { username: macAddress, password: macAddress + '1234' };
-    // TODO: connect to RabbitMQ container with HTTP API and create user with the new credentials
     const onboardingServer = new OnboardingServer();
     const createdUser = await onboardingServer.createUser(computedCredentials.username, computedCredentials.password);
     const setPermissions = await onboardingServer.setPermissions(computedCredentials.username);
     res.send(computedCredentials);
+});
+app.get("/Claim", async (req, res) => {
+    const macAddress = req.query.macAddress;
+    if (!macAddress) {
+        return res.status(400).send('Missing parameterss');
+        // TODO: Add an autorization
+        // If authorized: claim device
+        // Else: Reject
+    }
+    console.log('Endpoint /Claim executed command.');
+});
+app.get("/Unclaim", async (req, res) => {
+    const macAddress = req.query.macAddress;
+    if (!macAddress) {
+        return res.status(400).send('Missing parameterss');
+        // TODO: Add an autorization
+        // If authorized: claim device
+        // Else: Reject
+    }
+    // Todo: Check if device was claimed
+    // If claimed: unclaim
+    // Else: Reject
+    console.log('Endpoint /Unclaim executed command.');
 });
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
