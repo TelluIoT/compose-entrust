@@ -43,20 +43,47 @@ app.get('/register', async (req: Request, res: Response) => {
 app.get('/getCredentials', async (req: Request, res: Response) => {
   const macAddress: string | undefined = req.query.macAddress as string;
   const secret: string | undefined = req.query.secret as string;
+  // Check if not macAddress
   if (!macAddress) {
     return res.status(400).json({ error: 'Missing parameter' });
   }
-  // TODO: check if macAddress==secret
-  // TODO: check if claim==0
-  // TODO: check if Claimrequested==1
+  // Check if not secret
+  if (!secret) {
+    return res.status(400).send("Missing parameters")
+  }
+
+  // checks the secret against the database entry
+  const storedSecretDict = await db.get('SELECT secret FROM gateways WHERE macAddress = ?', [macAddress])
+  const storedSecret = storedSecretDict['secret']
+  if (secret !== storedSecret) {
+    return res.status(400).send("The secret does not match against the database entry!")
+  }
+
+  // checks if claimed is set to 0
+  const claimStatusDict = await db.get('SELECT claimed FROM gateways WHERE macAddress = ?', [macAddress])
+  const claimStatus = claimStatusDict['claimed']
+  if (claimStatus !== 0) {
+    return res.status(400).send("The device is already claimed!") 
+  } 
+  
+  // checks if claimRequested is set to 0.
+  const claimRequestedStatusDict = await db.get('SELECT claimRequested FROM gateways WHERE macAddress = ?', [macAddress])
+  const claimRequestedStatus = claimRequestedStatusDict['claimRequested']
+  if (claimRequestedStatus !== 1) {
+    return res.status(400).send("The device is not in pairing mode!")
+  }
+
+  // creates new mqtt users
   const mqttCredentials = { username: macAddress, password: macAddress+'1234' };
   const onboardingServer = new OnboardingServer();
   const createdUser = await onboardingServer.createUser(mqttCredentials.username, mqttCredentials.password);
   const setPermissions = await onboardingServer.setPermissions(mqttCredentials.username)
-
-  // TODO: claim=1
-  // TODO: claimRequested==0
   res.status(200).json({ mqttCredentials });
+
+  // updates claimRequested to 1.
+  await db.run("UPDATE gateways SET claimRequested = ? WHERE macAddress = ?", [0, macAddress])
+  // updates claimed to 1.
+  await db.run("UPDATE gateways SET claimed = ? WHERE macAddress = ?", [1, macAddress])
 });
 
 //endpoint on 3010: Claim (device)
