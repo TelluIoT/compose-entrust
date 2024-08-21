@@ -78,12 +78,11 @@ app.get('/getCredentials', async (req: Request, res: Response) => {
   const onboardingServer = new OnboardingServer();
   const createdUser = await onboardingServer.createUser(mqttCredentials.username, mqttCredentials.password);
   const setPermissions = await onboardingServer.setPermissions(mqttCredentials.username)
-  res.status(200).json({ mqttCredentials });
-
   // updates claimRequested to 1.
   await db.run("UPDATE gateways SET claimRequested = ? WHERE macAddress = ?", [0, macAddress])
   // updates claimed to 1.
   await db.run("UPDATE gateways SET claimed = ? WHERE macAddress = ?", [1, macAddress])
+  res.status(200).json({ mqttCredentials });
 });
 
 //endpoint on 3010: Claim (device)
@@ -125,6 +124,7 @@ app.get("/Claim", async(req: Request, res: Response) => {
   // updates claimRequested to 1.
   await db.run("UPDATE gateways SET claimRequested = ? WHERE macAddress = ?", [1, macAddress])
   console.log('Endpoint /Claim executed command.')
+  res.status(200).json({"Status": "OK"});
 });
 
 // endpoint on 3010: Unclaim (device)
