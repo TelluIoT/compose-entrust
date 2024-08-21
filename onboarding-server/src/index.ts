@@ -38,7 +38,8 @@ app.get('/register', async (req: Request, res: Response) => {
   res.status(201).json({ message: 'Gateway added successfully!', computedSecret });
 });
 
-//endpoint on 3010: getCredentials
+// endpoint on 3010: getCredentials
+// Called by the gateway when claimRequested status is set to 0.
 app.get('/getCredentials', async (req: Request, res: Response) => {
   const macAddress: string | undefined = req.query.macAddress as string;
   const secret: string | undefined = req.query.secret as string;
@@ -60,19 +61,42 @@ app.get('/getCredentials', async (req: Request, res: Response) => {
 
 //endpoint on 3010: Claim (device)
 // Called by the customer admin when assigning the gateway
-// to the acccount.
+// to the acccount. Changes the gateway into the pairing mode.
 app.get("/Claim", async(req: Request, res: Response) => {
   const macAddress: string | undefined = req.query.macAddress as string;
   const secret: string | undefined = req.query.secret as string;
+  // Check if not macAddress
   if (!macAddress) {
     return res.status(400).send('Missing parameterss')
-  // TODO: check if not secret
-  
-  // TODO: check if macAddress==secret
-  // TODO: check if claimRequest==0
-  // TODO: check if claim==0
-  // TODO: set claimRequest=1
   }
+  // Check if not secret
+  if (!secret) {
+    return res.status(400).send("Missing parameters")
+  }  
+  
+  // checks the secret against the database entry
+  const storedSecretDict = await db.get('SELECT secret FROM gateways WHERE macAddress = ?', [macAddress])
+  const storedSecret = storedSecretDict['secret']
+  if (secret !== storedSecret) {
+    return res.status(400).send("The secret does not match against the database entry!")
+  }
+
+  // checks if claimed is set to 0
+  const claimStatusDict = await db.get('SELECT claimed FROM gateways WHERE macAddress = ?', [macAddress])
+  const claimStatus = claimStatusDict['claimed']
+  if (claimStatus !== 0) {
+    return res.status(400).send("The device is already claimed!") 
+  } 
+  
+  // checks if claimRequested is set to 0.
+  const claimRequestedStatusDict = await db.get('SELECT claimRequested FROM gateways WHERE macAddress = ?', [macAddress])
+  const claimRequestedStatus = claimRequestedStatusDict['claimRequested']
+  if (claimRequestedStatus !== 0) {
+    return res.status(400).send("The device is already in pairing mode!")
+  }
+
+  // updates claimRequested to 1.
+  await db.run("UPDATE gateways SET claimRequested = ? WHERE macAddress = ?", [1, macAddress])
   console.log('Endpoint /Claim executed command.')
 });
 

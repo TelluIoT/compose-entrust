@@ -11,6 +11,7 @@ const port = 3015;
 const db = await initDB();
 // Middleware to parse JSON
 app.use(express.json());
+//endpoint 3010: registers new users in the .sqlite database
 app.get('/register', async (req, res) => {
     const macAddress = req.query.macAddress;
     if (!macAddress) {
@@ -30,46 +31,79 @@ app.get('/register', async (req, res) => {
 //endpoint on 3010: getCredentials
 app.get('/getCredentials', async (req, res) => {
     const macAddress = req.query.macAddress;
+    const secret = req.query.secret;
     if (!macAddress) {
         return res.status(400).json({ error: 'Missing parameter' });
     }
+    // TODO: check if macAddress==secret
+    // TODO: check if claim==0
+    // TODO: check if Claimrequested==1
     const mqttCredentials = { username: macAddress, password: macAddress + '1234' };
     const onboardingServer = new OnboardingServer();
     const createdUser = await onboardingServer.createUser(mqttCredentials.username, mqttCredentials.password);
     const setPermissions = await onboardingServer.setPermissions(mqttCredentials.username);
+    // TODO: claim=1
+    // TODO: claimRequested==0
     res.status(200).json({ mqttCredentials });
 });
 //endpoint on 3010: Claim (device)
+// Called by the customer admin when assigning the gateway
+// to the acccount. Changes the gateway into the pairing mode.
 app.get("/Claim", async (req, res) => {
     const macAddress = req.query.macAddress;
+    const secret = req.query.secret;
+    // Check if not macAddress
     if (!macAddress) {
         return res.status(400).send('Missing parameterss');
-        // TODO: Add an autorization
-        // If authorized: claim device
-        // Else: Reject
     }
+    // Check if not secret
+    if (!secret) {
+        return res.status(400).send("Missing parameters");
+    }
+    // checks the secret against the database entry
+    const storedSecretDict = await db.get('SELECT secret FROM gateways WHERE macAddress = ?', [macAddress]);
+    const storedSecret = storedSecretDict['secret'];
+    if (secret !== storedSecret) {
+        return res.status(400).send("The secret does not match against the database entry!");
+    }
+    // checks if claimed is set to 0
+    const claimStatusDict = await db.get('SELECT claimed FROM gateways WHERE macAddress = ?', [macAddress]);
+    const claimStatus = claimStatusDict['claimed'];
+    if (claimStatus !== 0) {
+        return res.status(400).send("The device is already claimed!");
+    }
+    // checks if claimRequested is set to 0.
+    const claimRequestedStatusDict = await db.get('SELECT claimRequested FROM gateways WHERE macAddress = ?', [macAddress]);
+    const claimRequestedStatus = claimRequestedStatusDict['claimRequested'];
+    if (claimRequestedStatus !== 0) {
+        return res.status(400).send("The device is already in pairing mode!");
+    }
+    // updates claimRequested to 1.
+    await db.run("UPDATE gateways SET claimRequested = ? WHERE macAddress = ?", [1, macAddress]);
     console.log('Endpoint /Claim executed command.');
 });
 // endpoint on 3010: Unclaim (device)
 app.get("/Unclaim", async (req, res) => {
     const macAddress = req.query.macAddress;
+    const secret = req.query.secret;
     if (!macAddress) {
         return res.status(400).send('Missing parameterss');
-        // TODO: Add an autorization
-        // If authorized: claim device
-        // Else: Reject
     }
-    // Todo: Check if device was claimed
-    // If claimed: unclaim
-    // Else: Reject
+    // TODO: check if not secret
+    // TODO: check if macAddress==secret
+    // TODO: check if claimRequest==0
+    // TODO: check if claim==1
+    // TODO: Delete from RabbitMQ database
+    // TODO: set claim=0
     console.log('Endpoint /Unclaim executed command.');
 });
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
-// example call (getCredentials): http://localhost:3010/getCredentials?macAddress=erik134
-// example call (Unclaim): http://localhost:3010/Claim?macAddress=erik134
-// example call (Unclaim): http://localhost:3010/Unclaim?macAddress=erik134
+// Step I: http://localhost:3010/register?macAddress=user2
+// Step II: http://localhost:3010/Claim?macAddress=user2
+// Step III: http://localhost:3010/getCredentials?macAddress=user2
+// Step IV: http://localhost:3010/Claim?macAddress=user2
 class OnboardingServer {
     // private readonly blabla;
     // constructor() {
