@@ -64,7 +64,6 @@ app.get('/getCredentials', async (req, res) => {
     const onboardingServer = new OnboardingServer();
     const createdUser = await onboardingServer.createUser(mqttCredentials.username, mqttCredentials.password);
     const setPermissions = await onboardingServer.setPermissions(mqttCredentials.username);
-    res.status(200).json({ mqttCredentials });
     // updates claimRequested to 1.
     await db.run("UPDATE gateways SET claimRequested = ? WHERE macAddress = ?", [0, macAddress]);
     // updates claimed to 1.
@@ -140,6 +139,8 @@ app.get("/Unclaim", async (req, res) => {
     }
     const onboardingServer = new OnboardingServer();
     const deleteduser = await onboardingServer.deleteUser(macAddress);
+    // updates claimed to 1.
+    await db.run("UPDATE gateways SET claimed = ? WHERE macAddress = ?", [0, macAddress]);
     console.log('Endpoint /Unclaim executed command.');
     res.status(200).json({ "Status": "OK" });
     //TODO SEND A MESSAGES TO THE GATEWAY

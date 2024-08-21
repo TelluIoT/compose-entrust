@@ -163,6 +163,8 @@ app.get("/Unclaim", async(req: Request, res: Response) => {
 
   const onboardingServer = new OnboardingServer();
   const deleteduser = await onboardingServer.deleteUser(macAddress)
+  // updates claimed to 1.
+  await db.run("UPDATE gateways SET claimed = ? WHERE macAddress = ?", [0, macAddress])
   
   console.log('Endpoint /Unclaim executed command.')
   res.status(200).json({"Status": "OK"});
