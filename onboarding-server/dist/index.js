@@ -139,9 +139,19 @@ app.get("/Unclaim", async (req, res) => {
     const onboardingServer = new OnboardingServer();
     const deleteduser = await onboardingServer.deleteUser(macAddress);
     console.log('Endpoint /Unclaim executed command.');
-    //await db.run("DELETE FROM gateways WHERE macAddress = ?", [macAddress])
-    //TODOl SEND A MESSAGES TO THE GATEWAY
-    //TODO: WIPE FROM 
+    res.status(200).json({ "Status": "OK" });
+    //TODO SEND A MESSAGES TO THE GATEWAY
+});
+// endpoint on 3010: Wipe (user)
+app.get("/Wipe", async (req, res) => {
+    const macAddress = req.query.macAddress;
+    // checks if not macAddress
+    if (!macAddress) {
+        return res.status(400).send('Missing parameters');
+    }
+    // deletes user from REST_DB
+    await db.run("DELETE FROM gateways WHERE macAddress = ?", [macAddress]);
+    res.status(200).json({ "Status": "OK" });
 });
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
