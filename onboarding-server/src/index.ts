@@ -131,18 +131,45 @@ app.get("/Claim", async(req: Request, res: Response) => {
 app.get("/Unclaim", async(req: Request, res: Response) => {
   const macAddress: string | undefined = req.query.macAddress as string;
   const secret: string | undefined = req.query.secret as string;
+  // Check if not macAddress
   if (!macAddress) {
-    return res.status(400).send('Missing parameterss')}
-  // TODO: check if not secret
+    return res.status(400).send('Missing parameters')
+  }
+  // Check if not secret
+  if (!secret) {
+    return res.status(400).send("Missing parameters")
+  }  
   
-  // TODO: check if macAddress==secret
-  // TODO: check if claimRequest==0
-  // TODO: check if claim==1
-  // TODO: Delete from RabbitMQ database
-  // TODO: set claim=0
-  console.log('Endpoint /Unclaim executed command.')
-});
+  // checks the secret against the database entry
+  const storedSecretDict = await db.get('SELECT secret FROM gateways WHERE macAddress = ?', [macAddress])
+  const storedSecret = storedSecretDict['secret']
+  if (secret !== storedSecret) {
+    return res.status(403).send("FORBIDDEN")
+  }
 
+  // checks if claimed is set to 0
+  const claimStatusDict = await db.get('SELECT claimed FROM gateways WHERE macAddress = ?', [macAddress])
+  const claimStatus = claimStatusDict['claimed']
+  if (claimStatus !== 1) {
+    return res.status(409).send("The device is not claimed!") 
+  } 
+  
+  // checks if claimRequested is set to 0.
+  const claimRequestedStatusDict = await db.get('SELECT claimRequested FROM gateways WHERE macAddress = ?', [macAddress])
+  const claimRequestedStatus = claimRequestedStatusDict['claimRequested']
+  if (claimRequestedStatus !== 0) {
+    return res.status(409).send("The device is still in pairing mode!")
+  }
+
+  const onboardingServer = new OnboardingServer();
+  const deleteduser = await onboardingServer.deleteUser(macAddress)
+  
+  console.log('Endpoint /Unclaim executed command.')
+
+  //await db.run("DELETE FROM gateways WHERE macAddress = ?", [macAddress])
+ //TODOl SEND A MESSAGES TO THE GATEWAY
+ //TODO: WIPE FROM 
+});
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
@@ -163,7 +190,6 @@ class OnboardingServer {
 
   async createUser(username: string, password: string) {
 
-    console.log(RABBITMQ_HOST, RABBITMQ_PORT, )
     const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/users`;
     const newUser = {
       password,
@@ -188,6 +214,26 @@ class OnboardingServer {
       console.error(`Error creating user: ${error.message}`);
     }
   };
+
+  async deleteUser(username: string) {
+
+    const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/users`
+    try {
+    const response = await got.delete(`${url}/${username}`, {
+      responseType: 'json',
+      username: RABBITMQ_USERNAME,
+      password: RABBITMQ_PASSWORD,
+    });
+    
+    if (response.statusCode === 204) {
+      console.log('User deleted successfully!');
+    } else {
+      console.log(`Failed to delete user ${response.statusCode} - ${response.body}`);
+    } 
+    } catch (error: any) {
+      console.error(`Error creating user ${error.message}`);
+    }
+  }
 
   async setPermissions(user: string) {
   
