@@ -77,7 +77,13 @@ app.get('/getCredentials', async (req: Request, res: Response) => {
   const mqttCredentials = { username: macAddress, password: macAddress+'1234' };
   const onboardingServer = new OnboardingServer();
   const createdUser = await onboardingServer.createUser(mqttCredentials.username, mqttCredentials.password);
-  const setPermissions = await onboardingServer.setPermissions(mqttCredentials.username)
+  const setPermissions = await onboardingServer.setPermissions(mqttCredentials.username);
+  // Creates a new exchange
+  // const newExchange = await onboardingServer.createExchange(macAddress);
+  const newBinding = await onboardingServer.createQueue(macAddress);
+  const newQueue = await onboardingServer.bindQueueToExchange(macAddress);
+  const message = await onboardingServer.publishMessage(macAddress, 'AK');
+
   // updates claimRequested to 1.
   await db.run("UPDATE gateways SET claimRequested = ? WHERE macAddress = ?", [0, macAddress])
   // updates claimed to 1.
@@ -203,9 +209,11 @@ class OnboardingServer {
   //   // If needed
   // }
 
+  // creates a new user
   async createUser(username: string, password: string) {
 
     const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/users`;
+    console.log(`${url}/${username}`)
     const newUser = {
       password,
       tags: ''
@@ -230,51 +238,146 @@ class OnboardingServer {
     }
   };
 
-  async deleteUser(username: string) {
+  // // creates a new exchange
+  // async createExchange(username: string) {
+  //   const vhost = '/'
+  //   const u = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/exchanges/${encodeURIComponent(vhost)}/${encodeURIComponent(username)}`;
+  //   console.log(u)
+  //   try {
+  //       const response = await got.put(u, {
+  //           json: {
+  //               type: 'topic', // We are using a topic exchange
+  //               durable: true, // The exchange should survive server restarts
+  //           },
+  //           responseType: 'json',
+  //           username: RABBITMQ_USERNAME,
+  //           password: RABBITMQ_PASSWORD
+  //       });
 
-    const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/users`
-    try {
-    const response = await got.delete(`${url}/${username}`, {
+  //       console.log(`Exchange '${username}' created successfully:`, response.body);
+  //   } catch (error: any) {
+  //       console.error('Failed to create exchange:', error.response ? error.response.body : error.message);
+  //   }
+  // }
+
+// creates a queue
+async createQueue(username: string) {
+  const vhost = '/'
+  // const queue = 'onboarding queue';
+  const u = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/queues/${encodeURIComponent(vhost)}/${encodeURIComponent(username)}`;
+  console.log(u)
+  try {
+      const response = await got.put(u, {
+          json: {
+              durable: true, // The queue should survive server restarts
+          },
+          responseType: 'json',
+          username: RABBITMQ_USERNAME,
+          password: RABBITMQ_PASSWORD
+      });
+      
+      console.log(`Queue '${username}' created successfully:`, response.body);
+  } catch (error: any) {
+      console.error('Failed to create queue:', error.response ? error.response.body : error.message);
+  }
+}
+
+// Binds a queue to an exchange with a routing key (topic)
+async bindQueueToExchange(username: string) {
+  const vhost = '/'
+  const u = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/bindings/${encodeURIComponent(vhost)}/e/amq.topic/q/${encodeURIComponent(username)}`;
+
+  try {
+      const response = await got.post(u, {
+          json: {
+              routing_key: `TGW:${username}`,
+          },
+          responseType: 'json',
+          username: RABBITMQ_USERNAME,
+          password: RABBITMQ_PASSWORD
+      });
+      console.log(`Queue '${username}' bound to exchange amq.topic with routing key 'TGW:${username}'`);
+  } catch (error: any) {
+      console.error('Failed to bind queue to exchange:', error.response ? error.response.body : error.message);
+  }
+}
+
+// Publish a message to the exchange
+async publishMessage(username: string, message: string) {
+  const vhost = '/';
+  const u = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/exchanges/${encodeURIComponent(vhost)}/amq.topic/publish`;
+  const rounting_key = `TGW:${username}`;
+  console.log(rounting_key)
+
+  try {
+      const response = await got.post(u, {
+          json: {
+              routing_key: rounting_key,
+              payload: message,
+              payload_encoding: 'string',
+              properties: {}
+          },
+          responseType: 'json',
+          username: RABBITMQ_USERNAME,
+          password: RABBITMQ_PASSWORD
+      });
+      console.log(`Message published to exchange amq.topic with routing key '$TGW:{username}':`, response.body);
+  } catch (error: any) {
+      console.error('Failed to publish message:', error.response ? error.response.body : error.message);
+  }
+}
+
+async deleteUser(username: string) {
+
+  const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/users`
+  try {
+  const response = await got.delete(`${url}/${username}`, {
+    responseType: 'json',
+    username: RABBITMQ_USERNAME,
+    password: RABBITMQ_PASSWORD,
+  });
+  
+  if (response.statusCode === 204) {
+    console.log('User deleted successfully!');
+  } else {
+    console.log(`Failed to delete user ${response.statusCode} - ${response.body}`);
+  } 
+  } catch (error: any) {
+    console.error(`Error creating user ${error.message}`);
+  }
+}
+
+async setPermissions(user: string) {
+
+  const vhost = '/'
+  const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/permissions/${encodeURIComponent(vhost)}/${user}`;
+  console.log(url)
+  const permissions = {
+  configure: '.*', // No permission to configure anything
+  write: `^TGW:${user}`, // Allow writing only to the specific queue
+  read: `^TGW:${user}` // Allow reading only from the specific queue
+  };
+  // const permissions = {
+  //   configure: '.*',
+  //   write: `.*`,
+  //   read: `.*`
+  //   };
+
+  try {
+    const response = await got.put(url, {
+      json: permissions,
       responseType: 'json',
       username: RABBITMQ_USERNAME,
       password: RABBITMQ_PASSWORD,
     });
-    
-    if (response.statusCode === 204) {
-      console.log('User deleted successfully!');
+
+    if (response.statusCode === 201) {
+      console.log('Permissions set successfully!');
     } else {
-      console.log(`Failed to delete user ${response.statusCode} - ${response.body}`);
-    } 
-    } catch (error: any) {
-      console.error(`Error creating user ${error.message}`);
+      console.log(`Failed to set permissions: ${response.statusCode} - ${response.body}`);
     }
+  } catch (error: any) {
+    console.error(`Error setting permissions: ${error.message}`);
   }
-
-  async setPermissions(user: string) {
-  
-    const vhost = '%2F';
-    const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/permissions/${vhost}/${user}`;
-    const permissions = {
-    configure: '.*',
-    write: '.*',
-    read: '.*'
-    };
-
-    try {
-      const response = await got.put(url, {
-        json: permissions,
-        responseType: 'json',
-        username: RABBITMQ_USERNAME,
-        password: RABBITMQ_PASSWORD,
-      });
-
-      if (response.statusCode === 201) {
-        console.log('Permissions set successfully!');
-      } else {
-        console.log(`Failed to set permissions: ${response.statusCode} - ${response.body}`);
-      }
-    } catch (error: any) {
-      console.error(`Error setting permissions: ${error.message}`);
-    }
-  };
+};
 }
