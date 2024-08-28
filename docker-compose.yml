@@ -25,9 +25,43 @@ services:
     ports:
       - "3010:3015"
     env_file:
-      - ./onboarding-server/.env
+      - .env
     environment: 
       - NODE_ENV=development
     volumes:
       - ./onboarding-server:/app
-      - /app/node_modules
+    # command: npm start
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: onboarding_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   container_name: pgadmin
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@admin.com
+  #     PGADMIN_DEFAULT_PASSWORD: admin
+  #   ports:
+  #     - "90:80"
+  #   depends_on:
+  #     - postgres
+
+  adminer:
+    image: adminer
+    restart: unless-stopped
+    ports:
+      - 8092:8080
+    links:
+      - postgres
+
+volumes:
+  postgres_data:
