@@ -23,8 +23,11 @@ services:
   onboarding-server:
     build: ./onboarding-server
     ports:
-      - "3010:3000"
+      - "3010:3015"
+    env_file:
+      - ./onboarding-server/.env
+    environment: 
+      - NODE_ENV=development
     volumes:
       - ./onboarding-server:/app
       - /app/node_modules
-    command: npm start

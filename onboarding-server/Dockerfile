@@ -1,5 +1,5 @@
-# Use the official Node.js 18 image as the base image
-FROM node:18-alpine
+# Use the official Node.js 20 image as the base image
+FROM node:20
 
 # Set the working directory
 WORKDIR /app
@@ -14,10 +14,10 @@ RUN npm install
 COPY . .
 
 # # Build the TypeScript code
-# RUN npm run build
+RUN npm run build
 
 # Expose the application port
-EXPOSE 3000
+EXPOSE 3015
 
 # Start the server
-CMD ["npm", "start"]
+CMD ["node", "dist/index.js"]
