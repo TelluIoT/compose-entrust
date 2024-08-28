@@ -157,6 +157,8 @@ app.get("/Wipe", async (req, res) => {
     if (!macAddress) {
         return res.status(400).send('Missing parameters');
     }
+    const onboardingServer = new OnboardingServer();
+    const deleteduser = await onboardingServer.deleteUser(macAddress);
     // deletes user from REST_DB
     await db.run("DELETE FROM gateways WHERE macAddress = ?", [macAddress]);
     res.status(200).json({ "Status": "OK" });

@@ -185,7 +185,9 @@ app.get("/Unclaim", async(req: Request, res: Response) => {
   if (!macAddress) {
     return res.status(400).send('Missing parameters')
   }
-
+  
+  const onboardingServer = new OnboardingServer();
+  const deleteduser = await onboardingServer.deleteUser(macAddress)
   // deletes user from REST_DB
   await db.run("DELETE FROM gateways WHERE macAddress = ?", [macAddress])
   res.status(200).json({"Status": "OK"});
@@ -352,16 +354,17 @@ async setPermissions(user: string) {
   const vhost = '/'
   const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/permissions/${encodeURIComponent(vhost)}/${user}`;
   console.log(url)
-  const permissions = {
-  configure: '.*', // No permission to configure anything
-  write: `^TGW:${user}`, // Allow writing only to the specific queue
-  read: `^TGW:${user}` // Allow reading only from the specific queue
-  };
   // const permissions = {
-  //   configure: '.*',
-  //   write: `.*`,
-  //   read: `.*`
-  //   };
+  // configure: '.*', // No permission to configure anything
+  // write: `^TGW:${user}`, // Allow writing only to the specific queue
+  // read: `^TGW:${user}` // Allow reading only from the specific queue
+  // };
+  //TODO: Set a proper permission for only a selected topic
+  const permissions = {
+    configure: '.*',
+    write: `.*`,
+    read: `.*`
+    };
 
   try {
     const response = await got.put(url, {
