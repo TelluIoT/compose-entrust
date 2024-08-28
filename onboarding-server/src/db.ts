@@ -1,18 +1,15 @@
-import sqlite3 from 'sqlite3';
-import { open, Database } from 'sqlite';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import Database from 'better-sqlite3';
 
 // Convert the current module's URL to a file path
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Function to initialize the SQLite database
-export async function initDB(): Promise<Database<sqlite3.Database, sqlite3.Statement>> {
-  const db = await open({
-    filename: path.join(__dirname, '..', 'data', 'mydatabase.sqlite'),
-    driver: sqlite3.Database,
-  });
+export async function initDB(): Promise<any> {
+  const dbPath = 'foobar.db';
+
+  console.log('dbPath: ', dbPath);
+
+  // Open the database using better-sqlite3
+  const db = new Database(dbPath);
 
   // Create the 'gateways' table if it doesn't exist
   await db.exec(`
