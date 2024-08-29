@@ -1,27 +1,3 @@
-// import sqlite3 from 'sqlite3';
-// import { open, Database } from 'sqlite';
-
-// // Function to initialize the SQLite database
-// export async function initDB(): Promise<Database<sqlite3.Database, sqlite3.Statement>> {
-//   const db = await open({
-//     filename: 'mydatabase.sqlite',
-//     driver: sqlite3.Database,
-//   });
-
-//   // Create the 'gateways' table if it doesn't exist
-//   await db.exec(`
-//     CREATE TABLE IF NOT EXISTS Gateways (
-//       macAddress TEXT PRIMARY KEY,
-//       secret TEXT NOT NULL,
-//       claimRequested BOOLEAN DEFAULT 0,
-//       claimed BOOLEAN DEFAULT 0
-//     )
-//   `);
-
-//   return db;
-// }
-
-
 import pkg from 'pg';
 const { Client } = pkg;
 
@@ -30,19 +6,10 @@ const POSTGRES_PASS=process.env.POSTGRES_PASS;
 const POSTGRES_HOST=process.env.POSTGRES_HOST;
 const POSTGRES_PORT = process.env.POSTGRES_PORT ? Number.parseInt(process.env.POSTGRES_PORT, 10) : 5434;
 
-// Database connection configuration
-const client = new Client({
-  user: POSTGRES_USER,
-  host: POSTGRES_HOST,
-  database: 'onboarding_db',
-  password: POSTGRES_PASS,
-  port: POSTGRES_PORT,
-});
-
 export async function initDB(): Promise<pkg.Client> {
   try {
     // Connect to the database
-    await client.connect();
+    const connectedClient = await getConnectedDbClient();
 
     // Create table idempotently
     const createTableQuery = `
@@ -54,25 +21,28 @@ export async function initDB(): Promise<pkg.Client> {
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
-    await client.query(createTableQuery);
+    await connectedClient.query(createTableQuery);
 
     console.log('Database initialized successfully!')
+
+    return connectedClient;
   } catch(error) {
     console.error('Failed to instantiate database: ', error);
     throw error;
   }
-  return client;
 };
 
-//   // Create the 'gateways' table if it doesn't exist
-//   await db.exec(`
-//     CREATE TABLE IF NOT EXISTS Gateways (
-//       macAddress TEXT PRIMARY KEY,
-//       secret TEXT NOT NULL,
-//       claimRequested BOOLEAN DEFAULT 0,
-//       claimed BOOLEAN DEFAULT 0
-//     )
-//   `);
+export async function getConnectedDbClient(): Promise<pkg.Client> {
+  // Database connection configuration
+  const client = new Client({
+    user: POSTGRES_USER,
+    host: POSTGRES_HOST,
+    database: 'onboarding_db',
+    password: POSTGRES_PASS,
+    port: POSTGRES_PORT,
+  });
 
-//   return db;
-// }
+  await client.connect();
+
+  return client;
+}
