@@ -77,16 +77,19 @@ export class Database {
 
   async addGateway(macAddress: string, secret: string) {
     const client = await this.getConnectedDbClient();
-    const query =  `INSERT INTO gateways (macAddress, secret) VALUES ($1, $2)`;
-    const values = [macAddress, secret]
-    await client.query(query, values);
+    await client.query(`INSERT INTO gateways (macAddress, secret) VALUES ($1, $2)`, [macAddress, secret]);
   }
 
-  async getGateway(macAddress: string): Promise<Gateway> {
+  async getGateway(macAddress: string): Promise<Gateway | undefined> {
     const client = await this.getConnectedDbClient();
     const queryResult = await client.query('SELECT secret, claimRequested, claimed FROM gateways WHERE macAddress = $1', [macAddress])
     const row = queryResult.rows?.[0];
     return row;
+  }
+
+  async updateGatewayStatus({ macAddress, claimRequested, claimed }: { macAddress: string, claimRequested: boolean, claimed: boolean }) {
+    const client = await this.getConnectedDbClient();
+    await client.query("UPDATE gateways SET claimRequested = $2, claimed = $3 WHERE macAddress = $1", [macAddress, claimRequested, claimed])
   }
 
 

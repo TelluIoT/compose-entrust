@@ -40,52 +40,53 @@ app.get('/register', async (req: Request, res: Response) => {
   }
 });
 
-// Called by the gateway when claimRequested status is set to 0.
-// app.get('/getCredentials', async (req: Request, res: Response) => {
-//   const macAddress: string | undefined = req.query.macAddress as string;
-//   const secret: string | undefined = req.query.secret as string;
-//   // Check if not macAddress
-//   if (!macAddress) {
-//     return res.status(400).json({ error: 'Missing parameter' });
-//   }
-//   // Check if not secret
-//   if (!secret) {
-//     return res.status(400).send("Missing parameters")
-//   }
+// Called by the gateway when it has reqistered successfully.
+app.get('/getCredentials', async (req: Request, res: Response) => {
+  const macAddress: string | undefined = req.query.macAddress as string;
+  const secret: string | undefined = req.query.secret as string;
+  // Check if not macAddress
+  if (!macAddress) {
+    return res.status(400).json({ error: 'Missing parameter' });
+  }
+  // Check if not secret
+  if (!secret) {
+    return res.status(400).send("Missing parameters")
+  }
 
-//   // checks the secret against the database entry
-//   // const queryResult = await db.query('SELECT secret, claimRequested, claimed FROM gateways WHERE macAddress = $1', [macAddress])
-//   const { secret: storedSecret, claimRequested: claimRequestedStatus, claimed: claimStatus } = queryResult.rows?.[0] ?? {};
-//   if (secret !== storedSecret) {
-//     return res.status(400).send("The secret does not match against the database entry")
-//   }
+  // checks the secret against the database entry
+  // const queryResult = await db.query('SELECT secret, claimRequested, claimed FROM gateways WHERE macAddress = $1', [macAddress])
+  const { secret: storedSecret, claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
+  if (secret !== storedSecret) {
+    return res.status(403).send("No match for gateway/secret");
+  }
 
-//   // checks if claimed is false
-//   if (claimStatus !== false) {
-//     return res.status(400).send("The device is already claimed!") 
-//   } 
+  // verify claim has been requested
+  if (claimRequested === false) {
+    return res.status(400).send("The device is not in pairing mode!")
+  }
+
+  // verify that device is not currently claimed
+  if (claimed === true) {
+    return res.status(400).send("The device is already claimed!") 
+  } 
+
+
+  // creates new mqtt users
+  const mqttCredentials = { username: macAddress, password: macAddress+'1234' };
+  const onboardingServer = new OnboardingServer();
+  const createdUser = await onboardingServer.createUser(mqttCredentials.username, mqttCredentials.password);
+  const setPermissions = await onboardingServer.setPermissions(mqttCredentials.username);
+  // Creates a new exchange
+  // const newExchange = await onboardingServer.createExchange(macAddress);
+  const newBinding = await onboardingServer.createQueue(macAddress);
+  const newQueue = await onboardingServer.bindQueueToExchange(macAddress);
+  const message = await onboardingServer.publishMessage(macAddress, 'AK');
+
+  // update status
+  await db.updateGatewayStatus({ macAddress, claimRequested: false, claimed: true });
   
-//   // checks if claimRequested is false
-//   if (claimRequestedStatus !== true) {
-//     return res.status(400).send("The device is not in pairing mode!")
-//   }
-
-//   // creates new mqtt users
-//   const mqttCredentials = { username: macAddress, password: macAddress+'1234' };
-//   const onboardingServer = new OnboardingServer();
-//   const createdUser = await onboardingServer.createUser(mqttCredentials.username, mqttCredentials.password);
-//   const setPermissions = await onboardingServer.setPermissions(mqttCredentials.username);
-//   // Creates a new exchange
-//   // const newExchange = await onboardingServer.createExchange(macAddress);
-//   const newBinding = await onboardingServer.createQueue(macAddress);
-//   const newQueue = await onboardingServer.bindQueueToExchange(macAddress);
-//   const message = await onboardingServer.publishMessage(macAddress, 'AK');
-
-//   // updates claimRequested to false and claimed to true.
-//   await db.query("UPDATE gateways SET claimRequested = false, claimed = true WHERE macAddress = $1", [macAddress])
-//   res.status(200).json({ mqttCredentials });
-
-// });
+  res.status(200).json({ mqttCredentials });
+});
 
 // // Called by the customer admin when assigning the gateway
 // // to the acccount. Changes the gateway into the pairing mode.
