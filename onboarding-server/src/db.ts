@@ -35,7 +35,7 @@ export async function initDB(): Promise<pkg.Client> {
 interface Gateway {
   macAddress: string;
   secret: string;
-  claimRequested: boolean;
+  claimrequested: boolean;
   claimed: boolean;
 }
 
@@ -82,14 +82,14 @@ export class Database {
 
   async getGateway(macAddress: string): Promise<Gateway | undefined> {
     const client = await this.getConnectedDbClient();
-    const queryResult = await client.query('SELECT secret, claimRequested, claimed FROM gateways WHERE macAddress = $1', [macAddress])
+    const queryResult = await client.query('SELECT secret, claimrequested, claimed FROM gateways WHERE macAddress = $1', [macAddress])
     const row = queryResult.rows?.[0];
     return row;
   }
 
   async updateGatewayStatus({ macAddress, claimRequested, claimed }: { macAddress: string, claimRequested: boolean, claimed: boolean }) {
     const client = await this.getConnectedDbClient();
-    await client.query("UPDATE gateways SET claimRequested = $2, claimed = $3 WHERE macAddress = $1", [macAddress, claimRequested, claimed])
+    await client.query("UPDATE gateways SET claimrequested = $2, claimed = $3 WHERE macAddress = $1", [macAddress, claimRequested, claimed])
   }
 
 

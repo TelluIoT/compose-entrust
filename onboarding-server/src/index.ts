@@ -40,6 +40,40 @@ app.get('/register', async (req: Request, res: Response) => {
   }
 });
 
+// // Called by the customer admin when assigning the gateway
+// // to the acccount. Changes the gateway into the pairing mode.
+app.get("/requestClaim", async(req: Request, res: Response) => {
+  const macAddress: string | undefined = req.query.macAddress as string;
+  const secret: string | undefined = req.query.secret as string;
+  // Check parameters
+  if (!macAddress || !secret) {
+    return res.status(400).send('Missing parameterss')
+  } 
+
+  // checks the secret against the database entry
+  const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
+  if (secret !== storedSecret) {
+    return res.status(403).send("No match for gateway/secret");
+  }
+
+  console.log('returned row status: ', claimRequested, claimed);
+
+  // verify claim has not yet been requested
+  if (claimRequested !== false) {
+    return res.status(400).send("The device is already in pairing mode!")
+  }
+  // verify that device is not currently claimed
+  if (claimed === true) {
+    return res.status(400).send("The device is already claimed!") 
+  } 
+
+  // update status
+  await db.updateGatewayStatus({ macAddress, claimRequested: true, claimed: false });
+
+  console.log('Endpoint /Claim executed command.')
+  res.status(200).json({"Status": "OK"});
+});
+
 // Called by the gateway when it has reqistered successfully.
 app.get('/getCredentials', async (req: Request, res: Response) => {
   const macAddress: string | undefined = req.query.macAddress as string;
@@ -55,13 +89,15 @@ app.get('/getCredentials', async (req: Request, res: Response) => {
 
   // checks the secret against the database entry
   // const queryResult = await db.query('SELECT secret, claimRequested, claimed FROM gateways WHERE macAddress = $1', [macAddress])
-  const { secret: storedSecret, claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
+  const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
   if (secret !== storedSecret) {
     return res.status(403).send("No match for gateway/secret");
   }
 
+  console.log('returned row status: ', claimRequested, claimed);
+
   // verify claim has been requested
-  if (claimRequested === false) {
+  if (claimRequested !== true) {
     return res.status(400).send("The device is not in pairing mode!")
   }
 
@@ -69,7 +105,6 @@ app.get('/getCredentials', async (req: Request, res: Response) => {
   if (claimed === true) {
     return res.status(400).send("The device is already claimed!") 
   } 
-
 
   // creates new mqtt users
   const mqttCredentials = { username: macAddress, password: macAddress+'1234' };
@@ -88,85 +123,41 @@ app.get('/getCredentials', async (req: Request, res: Response) => {
   res.status(200).json({ mqttCredentials });
 });
 
-// // Called by the customer admin when assigning the gateway
-// // to the acccount. Changes the gateway into the pairing mode.
-// app.get("/Claim", async(req: Request, res: Response) => {
-//   const macAddress: string | undefined = req.query.macAddress as string;
-//   const secret: string | undefined = req.query.secret as string;
-//   // Check parameters
-//   if (!macAddress || !secret) {
-//     return res.status(400).send('Missing parameterss')
-//   }  
-  
-//   // checks the secret and status against the database entry
-//   const { secret: st} = await db.get('SELECT secret, claimed FROM gateways WHERE macAddress = $1', [macAddress])
-//   const storedSecret = storedSecretDict['secret']
-//   if (secret !== storedSecret) {
-//     return res.status(400).send("The secret does not match against the database entry!")
-//   }
+app.get("/Unclaim", async(req: Request, res: Response) => {
+  const macAddress: string | undefined = req.query.macAddress as string;
+  const secret: string | undefined = req.query.secret as string;
+  // Check if not macAddress
+  if (!macAddress) {
+    return res.status(400).json({ error: 'Missing parameter' });
+  }
+  // Check if not secret
+  if (!secret) {
+    return res.status(400).send("Missing parameters")
+  }
 
-//   // checks if claimed is set to 0
-//   const claimStatusDict = await db.get('SELECT claimed FROM gateways WHERE macAddress = $1', [macAddress])
-//   const claimStatus = claimStatusDict['claimed']
-//   if (claimStatus !== 0) {
-//     return res.status(400).send("The device is already claimed!") 
-//   } 
-  
-//   // checks if claimRequested is set to 0.
-//   const claimRequestedStatusDict = await db.get('SELECT claimRequested FROM gateways WHERE macAddress = $1', [macAddress])
-//   const claimRequestedStatus = claimRequestedStatusDict['claimRequested']
-//   if (claimRequestedStatus !== 0) {
-//     return res.status(400).send("The device is already in pairing mode!")
-//   }
+  // checks the secret against the database entry
+  // const queryResult = await db.query('SELECT secret, claimRequested, claimed FROM gateways WHERE macAddress = $1', [macAddress])
+  const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
+  if (secret !== storedSecret) {
+    return res.status(403).send("No match for gateway/secret");
+  }
 
-//   // updates claimRequested to 1.
-//   await db.run("UPDATE gateways SET claimRequested = ? WHERE macAddress = $1", [1, macAddress])
-//   console.log('Endpoint /Claim executed command.')
-//   res.status(200).json({"Status": "OK"});
-// });
+  console.log('returned row status: ', claimRequested, claimed);
 
-// app.get("/Unclaim", async(req: Request, res: Response) => {
-//   const macAddress: string | undefined = req.query.macAddress as string;
-//   const secret: string | undefined = req.query.secret as string;
-//   // Check if not macAddress
-//   if (!macAddress) {
-//     return res.status(400).send('Missing parameters')
-//   }
-//   // Check if not secret
-//   if (!secret) {
-//     return res.status(400).send("Missing parameters")
-//   }  
-  
-//   // checks the secret against the database entry
-//   const storedSecretDict = await db.get('SELECT secret FROM gateways WHERE macAddress = $1', [macAddress])
-//   const storedSecret = storedSecretDict['secret']
-//   if (secret !== storedSecret) {
-//     return res.status(403).send("FORBIDDEN")
-//   }
+  // verify that device is currently claimed
+  if (claimed !== true) {
+    return res.status(400).send("The device is not yet claimed!") 
+  }
 
-//   // checks if claimed is set to 0
-//   const claimStatusDict = await db.get('SELECT claimed FROM gateways WHERE macAddress = $1', [macAddress])
-//   const claimStatus = claimStatusDict['claimed']
-//   if (claimStatus !== 1) {
-//     return res.status(409).send("The device is not claimed!") 
-//   } 
-  
-//   // checks if claimRequested is set to 0.
-//   const claimRequestedStatusDict = await db.get('SELECT claimRequested FROM gateways WHERE macAddress = $1', [macAddress])
-//   const claimRequestedStatus = claimRequestedStatusDict['claimRequested']
-//   if (claimRequestedStatus !== 0) {
-//     return res.status(409).send("The device is still in pairing mode!")
-//   }
+  const onboardingServer = new OnboardingServer();
+  const deleteduser = await onboardingServer.deleteUser(macAddress)
 
-//   const onboardingServer = new OnboardingServer();
-//   const deleteduser = await onboardingServer.deleteUser(macAddress)
-//   // updates claimed to 1.
-//   await db.run("UPDATE gateways SET claimed = ? WHERE macAddress = $1", [0, macAddress])
+  await db.updateGatewayStatus({ macAddress, claimRequested: false, claimed: false });
   
-//   console.log('Endpoint /Unclaim executed command.')
-//   res.status(200).json({"Status": "OK"});
-//  //TODO SEND A MESSAGES TO THE GATEWAY
-// });
+  console.log('Endpoint /Unclaim executed command.')
+  res.status(200).json({"Status": "OK"});
+ //TODO SEND A MESSAGES TO THE GATEWAY
+});
 
 
 // // endpoint on 3010: Wipe (user)
@@ -189,6 +180,17 @@ app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
+
+// export async function startServer(port: number) {
+//   const server = await app.listen(port, () => {
+//       console.log(`Server is running on port ${port}`);
+//     })
+//   return server;
+// }
+
+// export default app;
+
+
 // Step I: http://localhost:3010/register?macAddress=user2
 // Step II: http://localhost:3010/Claim?macAddress=user2
 // Step III: http://localhost:3010/getCredentials?macAddress=user2
@@ -196,6 +198,9 @@ app.listen(port, () => {
 
 
 class OnboardingServer {
+
+  
+
   // creates a new user
   async createUser(username: string, password: string) {
 
@@ -277,13 +282,13 @@ async bindQueueToExchange(username: string) {
   try {
       const response = await got.post(u, {
           json: {
-              routing_key: `TGW:${username}`,
+              routing_key: `TGW/${username}`,
           },
           responseType: 'json',
           username: RABBITMQ_USERNAME,
           password: RABBITMQ_PASSWORD
       });
-      console.log(`Queue '${username}' bound to exchange amq.topic with routing key 'TGW:${username}'`);
+      console.log(`Queue '${username}' bound to exchange amq.topic with routing key 'TGW/${username}'`);
   } catch (error: any) {
       console.error('Failed to bind queue to exchange:', error.response ? error.response.body : error.message);
   }
@@ -293,7 +298,7 @@ async bindQueueToExchange(username: string) {
 async publishMessage(username: string, message: string) {
   const vhost = '/';
   const u = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/exchanges/${encodeURIComponent(vhost)}/amq.topic/publish`;
-  const rounting_key = `TGW:${username}`;
+  const rounting_key = `TGW/${username}`;
   console.log(rounting_key)
 
   try {
@@ -308,7 +313,7 @@ async publishMessage(username: string, message: string) {
           username: RABBITMQ_USERNAME,
           password: RABBITMQ_PASSWORD
       });
-      console.log(`Message published to exchange amq.topic with routing key '$TGW:{username}':`, response.body);
+      console.log(`Message published to exchange amq.topic with routing key '$TGW/{username}':`, response.body);
   } catch (error: any) {
       console.error('Failed to publish message:', error.response ? error.response.body : error.message);
   }
@@ -341,8 +346,8 @@ async deleteUser(username: string) {
     console.log(url)
     // const permissions = {
     // configure: '.*', // No permission to configure anything
-    // write: `^TGW:${user}`, // Allow writing only to the specific queue
-    // read: `^TGW:${user}` // Allow reading only from the specific queue
+    // write: `^TGW/${user}`, // Allow writing only to the specific queue
+    // read: `^TGW/${user}` // Allow reading only from the specific queue
     // };
     //TODO: Set a proper permission for only a selected topic
     const permissions = {
