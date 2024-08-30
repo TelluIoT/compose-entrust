@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import got from 'got';
-import { Database } from './db.js';
+import { Database, initDB } from './db.js';
 
 const RABBITMQ_HOST = process.env.RABBITMQ_HOST || 'rabbitmq';
 const RABBITMQ_PORT = process.env.RABBITMQ_PORT || '15672';
@@ -10,6 +10,7 @@ const RABBITMQ_PASSWORD = process.env.RABBITMQ_PASS || 'guest';
 // onboarding server
 const app = express();
 const port = 3015;
+await initDB();
 const db = new Database();
 
 // Middleware to parse JSON
@@ -58,11 +59,10 @@ app.get("/requestClaim", async(req: Request, res: Response) => {
 
   console.log('returned row status: ', claimRequested, claimed);
 
-  // verify claim has not yet been requested
-  if (claimRequested !== false) {
+  if (claimRequested === true) {
     return res.status(400).send("The device is already in pairing mode!")
   }
-  // verify that device is not currently claimed
+
   if (claimed === true) {
     return res.status(400).send("The device is already claimed!") 
   } 
@@ -96,12 +96,10 @@ app.get('/getCredentials', async (req: Request, res: Response) => {
 
   console.log('returned row status: ', claimRequested, claimed);
 
-  // verify claim has been requested
-  if (claimRequested !== true) {
+  if (claimRequested === false) {
     return res.status(400).send("The device is not in pairing mode!")
   }
 
-  // verify that device is not currently claimed
   if (claimed === true) {
     return res.status(400).send("The device is already claimed!") 
   } 
@@ -123,7 +121,7 @@ app.get('/getCredentials', async (req: Request, res: Response) => {
   res.status(200).json({ mqttCredentials });
 });
 
-app.get("/Unclaim", async(req: Request, res: Response) => {
+app.get("/unclaim", async(req: Request, res: Response) => {
   const macAddress: string | undefined = req.query.macAddress as string;
   const secret: string | undefined = req.query.secret as string;
   // Check if not macAddress
@@ -136,7 +134,6 @@ app.get("/Unclaim", async(req: Request, res: Response) => {
   }
 
   // checks the secret against the database entry
-  // const queryResult = await db.query('SELECT secret, claimRequested, claimed FROM gateways WHERE macAddress = $1', [macAddress])
   const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
   if (secret !== storedSecret) {
     return res.status(403).send("No match for gateway/secret");
@@ -144,8 +141,7 @@ app.get("/Unclaim", async(req: Request, res: Response) => {
 
   console.log('returned row status: ', claimRequested, claimed);
 
-  // verify that device is currently claimed
-  if (claimed !== true) {
+  if (claimed === false) {
     return res.status(400).send("The device is not yet claimed!") 
   }
 
@@ -155,8 +151,10 @@ app.get("/Unclaim", async(req: Request, res: Response) => {
   await db.updateGatewayStatus({ macAddress, claimRequested: false, claimed: false });
   
   console.log('Endpoint /Unclaim executed command.')
-  res.status(200).json({"Status": "OK"});
- //TODO SEND A MESSAGES TO THE GATEWAY
+
+  //TODO SEND A MESSAGES TO THE GATEWAY
+
+  res.status(200).json({"Status": "OK"}); 
 });
 
 
