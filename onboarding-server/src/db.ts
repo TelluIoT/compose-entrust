@@ -32,6 +32,13 @@ export async function initDB(): Promise<pkg.Client> {
   }
 };
 
+interface Gateway {
+  macAddress: string;
+  secret: string;
+  claimRequested: boolean;
+  claimed: boolean;
+}
+
 export async function getConnectedDbClient(): Promise<pkg.Client> {
   // Database connection configuration
   const client = new Client({
@@ -45,4 +52,42 @@ export async function getConnectedDbClient(): Promise<pkg.Client> {
   await client.connect();
 
   return client;
+}
+
+export class Database {
+  private client: pkg.Client | undefined = undefined;
+
+  private async getConnectedDbClient(): Promise<pkg.Client> {
+    if (this.client) return this.client;
+
+    const client = new Client({
+      user: POSTGRES_USER,
+      host: POSTGRES_HOST,
+      database: 'onboarding_db',
+      password: POSTGRES_PASS,
+      port: POSTGRES_PORT,
+    });
+  
+    await client.connect();
+
+    this.client = client;
+  
+    return client;
+  }
+
+  async addGateway(macAddress: string, secret: string) {
+    const client = await this.getConnectedDbClient();
+    const query =  `INSERT INTO gateways (macAddress, secret) VALUES ($1, $2)`;
+    const values = [macAddress, secret]
+    await client.query(query, values);
+  }
+
+  async getGateway(macAddress: string): Promise<Gateway> {
+    const client = await this.getConnectedDbClient();
+    const queryResult = await client.query('SELECT secret, claimRequested, claimed FROM gateways WHERE macAddress = $1', [macAddress])
+    const row = queryResult.rows?.[0];
+    return row;
+  }
+
+
 }
