@@ -31,6 +31,9 @@ services:
     volumes:
       - ./onboarding-server:/app
     # command: npm start
+    depends_on:
+      - postgres
+      - rabbitmq
 
   postgres:
     image: postgres:latest
