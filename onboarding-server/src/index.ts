@@ -285,13 +285,13 @@ async bindQueueToExchange(username: string) {
   try {
       const response = await got.post(u, {
           json: {
-              routing_key: `TGW/${username}`,
+              routing_key: `${username}`,
           },
           responseType: 'json',
           username: RABBITMQ_USERNAME,
           password: RABBITMQ_PASSWORD
       });
-      console.log(`Queue '${username}' bound to exchange amq.topic with routing key 'TGW/${username}'`);
+      console.log(`Queue '${username}' bound to exchange amq.topic with routing key '${username}'`);
   } catch (error: any) {
       console.error('Failed to bind queue to exchange:', error.response ? error.response.body : error.message);
   }
@@ -301,7 +301,7 @@ async bindQueueToExchange(username: string) {
 async publishMessage(username: string, message: string) {
   const vhost = '/';
   const u = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/exchanges/${encodeURIComponent(vhost)}/amq.topic/publish`;
-  const rounting_key = `TGW/${username}`;
+  const rounting_key = `${username}`;
   console.log(rounting_key)
 
   try {
@@ -316,7 +316,7 @@ async publishMessage(username: string, message: string) {
           username: RABBITMQ_USERNAME,
           password: RABBITMQ_PASSWORD
       });
-      console.log(`Message published to exchange amq.topic with routing key '$TGW/{username}':`, response.body);
+      console.log(`Message published to exchange amq.topic with routing key '${username}':`, response.body);
   } catch (error: any) {
       console.error('Failed to publish message:', error.response ? error.response.body : error.message);
   }
@@ -349,8 +349,8 @@ async deleteUser(username: string) {
     console.log(url)
     // const permissions = {
     // configure: '.*', // No permission to configure anything
-    // write: `^TGW/${user}`, // Allow writing only to the specific queue
-    // read: `^TGW/${user}` // Allow reading only from the specific queue
+    // write: `^${user}`, // Allow writing only to the specific queue
+    // read: `^${user}` // Allow reading only from the specific queue
     // };
     //TODO: Set a proper permission for only a selected topic
     const permissions = {
