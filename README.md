@@ -31,6 +31,7 @@ You might need to run with "sudo" prefix.
    ```
    cd entrust
    tar xzf compose-entrust.tar.gz
+   cd compose-entrust
    ```
 
 5. Build docker image (with sudo)

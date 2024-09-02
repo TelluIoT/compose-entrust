@@ -1,2 +1,3 @@
 *.bin binary
-EOL=LF 
+EOL=LF
+* text=auto eol=lf
