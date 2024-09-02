@@ -91,4 +91,9 @@ export class Database {
     const client = await this.getConnectedDbClient();
     await client.query("UPDATE gateways SET claimrequested = $2, claimed = $3 WHERE macAddress = $1", [macAddress, claimRequested, claimed])
   }
+
+  async removeGateway({macAddress}: {macAddress: string}) {
+    const client = await this.getConnectedDbClient();
+    await client.query('DELETE FROM gateways WHERE macAddress = $1', [macAddress])
+  }
 }
