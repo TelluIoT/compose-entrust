@@ -1,6 +1,8 @@
 import express, { Request, Response } from 'express';
 import got from 'got';
 import { Database, initDB } from './db.js';
+import { performance } from 'perf_hooks';
+import { logPerformanceMetrics } from "./utils.js";
 
 const RABBITMQ_HOST = process.env.RABBITMQ_HOST || 'rabbitmq';
 const RABBITMQ_PORT = process.env.RABBITMQ_PORT || '15672';
@@ -21,23 +23,31 @@ console.log('setting up the express server, with updated build!');
 
 //endpoint 3010: registers new users in the .sqlite database
 app.get('/register', async (req: Request, res: Response) => {
-  console.log('received register request for MAC:'+ req.query.macAddress);
+  const startTime = performance.now();
+  const startDate = new Date();
+  console.log('Received register request for MAC:', req.query.macAddress);
 
   const macAddress: string | undefined = req.query.macAddress as string;
   if (!macAddress) {
+    const endTime = performance.now();
+    logPerformanceMetrics(startTime, endTime, startDate, new Date()); 
     return res.status(400).json({ error: 'Missing parameter' });
   }
 
-  const computedSecret = macAddress+'abcd';
+  const computedSecret = macAddress + 'abcd';
 
-  // register in database
   try {
     await db.addGateway(macAddress, computedSecret);
-    res.status(201).json({ message: `Gateway ${macAddress} added successfully!`, computedSecret });
-
+    res.status(201).json({
+      message: `Gateway ${macAddress} added successfully!`,
+      computedSecret,
+    });
   } catch (err) {
     console.error('Error inserting gateway:', err);
-    res.status(500).json({ error: `Failed to add gateway: ${macAddress} `});
+    res.status(500).json({ error: `Failed to add gateway: ${macAddress}` });
+  } finally {
+    const endTime = performance.now(); 
+    logPerformanceMetrics(startTime, endTime, startDate, new Date()) 
   }
 });
 
