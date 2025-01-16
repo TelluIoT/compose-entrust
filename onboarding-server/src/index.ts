@@ -51,37 +51,51 @@ app.get('/register', async (req: Request, res: Response) => {
   }
 });
 
-// // Called by the customer admin when assigning the gateway
-// // to the acccount. Changes the gateway into the pairing mode.
-app.get("/requestClaim", async(req: Request, res: Response) => {
+// Called by the customer admin when assigning the gateway
+// to the account. Changes the gateway into the pairing mode.
+app.get("/requestClaim", async (req: Request, res: Response) => {
+  const startTime = performance.now();
+  const startDate = new Date();
+
   const macAddress: string | undefined = req.query.macAddress as string;
   const secret: string | undefined = req.query.secret as string;
+
   // Check parameters
   if (!macAddress || !secret) {
-    return res.status(400).send('Missing parameterss')
-  } 
+    const endTime = performance.now();
+    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    return res.status(400).send("Missing parameters");
+  }
 
-  // checks the secret against the database entry
+  // Checks the secret against the database entry
   const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
   if (secret !== storedSecret) {
+    const endTime = performance.now();
+    logPerformanceMetrics(startTime, endTime, startDate, new Date());
     return res.status(403).send("No match for gateway/secret");
   }
 
-  console.log('returned row status: ', claimRequested, claimed);
+  console.log("Returned row status: ", claimRequested, claimed);
 
   if (claimRequested === true) {
-    return res.status(400).send("The device is already in pairing mode!")
+    const endTime = performance.now();
+    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    return res.status(400).send("The device is already in pairing mode!");
   }
 
   if (claimed === true) {
-    return res.status(400).send("The device is already claimed!") 
-  } 
+    const endTime = performance.now();
+    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    return res.status(400).send("The device is already claimed!");
+  }
 
-  // update status
+  // Update status
   await db.updateGatewayStatus({ macAddress, claimRequested: true, claimed: false });
 
-  console.log('Endpoint /Claim executed command.')
-  res.status(200).json({"Status": "OK"});
+  console.log("Endpoint /Claim executed command.");
+  const endTime = performance.now();
+  logPerformanceMetrics(startTime, endTime, startDate, new Date());
+  res.status(200).json({ Status: "OK" });
 });
 
 // Called by the gateway when it has reqistered successfully.
