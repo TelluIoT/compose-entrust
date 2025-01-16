@@ -216,24 +216,33 @@ app.get("/unclaim", async (req: Request, res: Response) => {
 
 
 // endpoint on 3010: Wipe (user)
-  app.get("/Wipe", async(req: Request, res: Response) => {
-    const macAddress: string | undefined = req.query.macAddress as string;
-  // checks if not macAddress
-  if (!macAddress) {
-    return res.status(400).send('Missing parameters')
-  }
-  
-  // deletes user from RabbitMQ DB
-  const onboardingServer = new OnboardingServer();
-  const deleteduser = await onboardingServer.deleteUser(macAddress)
-  
-  // TODO: Remove also user's exchange
-  
-  // deletes user from REST_DB
-  await db.removeGateway({macAddress})
+app.get("/Wipe", async (req: Request, res: Response) => {
+  const startTime = performance.now();
+  const startDate = new Date();
 
-  res.status(200).json({"Status": "OK"});
-})
+  const macAddress: string | undefined = req.query.macAddress as string;
+
+  // Checks if not macAddress
+  if (!macAddress) {
+    const endTime = performance.now();
+    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    return res.status(400).send("Missing parameters");
+  }
+
+  // Deletes user from RabbitMQ DB
+  const onboardingServer = new OnboardingServer();
+  const deleteduser = await onboardingServer.deleteUser(macAddress);
+
+  // TODO: Remove also user's exchange
+
+  // Deletes user from REST_DB
+  await db.removeGateway({ macAddress });
+
+  const endTime = performance.now();
+  logPerformanceMetrics(startTime, endTime, startDate, new Date());
+  res.status(200).json({ Status: "OK" });
+});
+
 
 
 app.listen(port, () => {
