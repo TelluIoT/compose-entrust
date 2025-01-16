@@ -30,7 +30,7 @@ app.get('/register', async (req: Request, res: Response) => {
   const macAddress: string | undefined = req.query.macAddress as string;
   if (!macAddress) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date()); 
+    logPerformanceMetrics("Onboarding-API: Register",startTime, endTime, startDate, new Date()); 
     return res.status(400).json({ error: 'Missing parameter' });
   }
 
@@ -47,7 +47,7 @@ app.get('/register', async (req: Request, res: Response) => {
     res.status(500).json({ error: `Failed to add gateway: ${macAddress}` });
   } finally {
     const endTime = performance.now(); 
-    logPerformanceMetrics(startTime, endTime, startDate, new Date()) 
+    logPerformanceMetrics("Onboarding-API: Register",startTime, endTime, startDate, new Date()) 
   }
 });
 
@@ -63,7 +63,7 @@ app.get("/requestClaim", async (req: Request, res: Response) => {
   // Check parameters
   if (!macAddress || !secret) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: RequestClaim",startTime, endTime, startDate, new Date());
     return res.status(400).send("Missing parameters");
   }
 
@@ -71,7 +71,7 @@ app.get("/requestClaim", async (req: Request, res: Response) => {
   const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
   if (secret !== storedSecret) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: RequestClaim",startTime, endTime, startDate, new Date());
     return res.status(403).send("No match for gateway/secret");
   }
 
@@ -79,13 +79,13 @@ app.get("/requestClaim", async (req: Request, res: Response) => {
 
   if (claimRequested === true) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: RequestClaim",startTime, endTime, startDate, new Date());
     return res.status(400).send("The device is already in pairing mode!");
   }
 
   if (claimed === true) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: RequestClaim",startTime, endTime, startDate, new Date());
     return res.status(400).send("The device is already claimed!");
   }
 
@@ -94,7 +94,7 @@ app.get("/requestClaim", async (req: Request, res: Response) => {
 
   console.log("Endpoint /Claim executed command.");
   const endTime = performance.now();
-  logPerformanceMetrics(startTime, endTime, startDate, new Date());
+  logPerformanceMetrics("Onboarding-API: RequestClaim",startTime, endTime, startDate, new Date());
   res.status(200).json({ Status: "OK" });
 });
 
@@ -109,14 +109,14 @@ app.get('/getCredentials', async (req: Request, res: Response) => {
   // Check if not macAddress
   if (!macAddress) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: GetCredentials",startTime, endTime, startDate, new Date());
     return res.status(400).json({ error: 'Missing parameter' });
   }
 
   // Check if not secret
   if (!secret) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: GetCredentials",startTime, endTime, startDate, new Date());
     return res.status(400).send("Missing parameters");
   }
 
@@ -125,7 +125,7 @@ app.get('/getCredentials', async (req: Request, res: Response) => {
   const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
   if (secret !== storedSecret) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: GetCredentials",startTime, endTime, startDate, new Date());
     return res.status(403).send("No match for gateway/secret");
   }
 
@@ -133,13 +133,13 @@ app.get('/getCredentials', async (req: Request, res: Response) => {
 
   if (claimRequested === false) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: GetCredentials",startTime, endTime, startDate, new Date());
     return res.status(400).send("The device is not in pairing mode!");
   }
 
   if (claimed === true) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: GetCredentials",startTime, endTime, startDate, new Date());
     return res.status(400).send("The device is already claimed!");
   }
 
@@ -159,7 +159,7 @@ app.get('/getCredentials', async (req: Request, res: Response) => {
   await db.updateGatewayStatus({ macAddress, claimRequested: false, claimed: true });
 
   const endTime = performance.now();
-  logPerformanceMetrics(startTime, endTime, startDate, new Date());
+  logPerformanceMetrics("Onboarding-API: GetCredentials",startTime, endTime, startDate, new Date());
   res.status(200).json({ mqttCredentials });
 });
 
@@ -174,14 +174,14 @@ app.get("/unclaim", async (req: Request, res: Response) => {
   // Check if not macAddress
   if (!macAddress) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: Unclaim",startTime, endTime, startDate, new Date());
     return res.status(400).json({ error: 'Missing parameter' });
   }
 
   // Check if not secret
   if (!secret) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: Unclaim",startTime, endTime, startDate, new Date());
     return res.status(400).send("Missing parameters");
   }
 
@@ -189,7 +189,7 @@ app.get("/unclaim", async (req: Request, res: Response) => {
   const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
   if (secret !== storedSecret) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: Unclaim",startTime, endTime, startDate, new Date());
     return res.status(403).send("No match for gateway/secret");
   }
 
@@ -197,7 +197,7 @@ app.get("/unclaim", async (req: Request, res: Response) => {
 
   if (claimed === false) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: Unclaim",startTime, endTime, startDate, new Date());
     return res.status(400).send("The device is not yet claimed!");
   }
 
@@ -210,7 +210,7 @@ app.get("/unclaim", async (req: Request, res: Response) => {
 
   // TODO: Send a message to the gateway
   const endTime = performance.now();
-  logPerformanceMetrics(startTime, endTime, startDate, new Date());
+  logPerformanceMetrics("Onboarding-API: Unclaim",startTime, endTime, startDate, new Date());
   res.status(200).json({ Status: "OK" });
 });
 
@@ -225,7 +225,7 @@ app.get("/Wipe", async (req: Request, res: Response) => {
   // Checks if not macAddress
   if (!macAddress) {
     const endTime = performance.now();
-    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    logPerformanceMetrics("Onboarding-API: Wipe",startTime, endTime, startDate, new Date());
     return res.status(400).send("Missing parameters");
   }
 
@@ -239,7 +239,7 @@ app.get("/Wipe", async (req: Request, res: Response) => {
   await db.removeGateway({ macAddress });
 
   const endTime = performance.now();
-  logPerformanceMetrics(startTime, endTime, startDate, new Date());
+  logPerformanceMetrics("Onboarding-API: Wipe",startTime, endTime, startDate, new Date());
   res.status(200).json({ Status: "OK" });
 });
 
@@ -261,9 +261,9 @@ app.listen(port, () => {
 
 
 // Step I: http://localhost:3010/register?macAddress=user2
-// Step II: http://localhost:3010/Claim?macAddress=user2
-// Step III: http://localhost:3010/getCredentials?macAddress=user2
-// Step IV: http://localhost:3010/Claim?macAddress=user2
+// Step II: http://localhost:3010/requestClaim?macAddress=user2&secret=user2abcd
+// Step III: http://localhost:3010/getCredentials?macAddress=user2&secret=user2abcd
+// Step IV: http://localhost:3010/requestClaim?macAddress=user2&secret=user2abcd
 
 
 class OnboardingServer {
@@ -298,7 +298,7 @@ class OnboardingServer {
       console.error(`Error creating user: ${error.message}`);
     } finally {
       const endTime = performance.now();
-      logPerformanceMetrics(startTime, endTime, startDate, new Date());
+      logPerformanceMetrics("RabbitMQ: CreateUser",startTime, endTime, startDate, new Date());
     }
   };
 
@@ -348,7 +348,7 @@ class OnboardingServer {
       console.error('Failed to create queue:', error.response ? error.response.body : error.message);
     } finally {
       const endTime = performance.now();
-      logPerformanceMetrics(startTime, endTime, startDate, new Date());
+      logPerformanceMetrics("RabbitMQ: CreateQueue",startTime, endTime, startDate, new Date());
     }
   }
 
@@ -371,7 +371,7 @@ class OnboardingServer {
       console.error('Failed to bind queue to exchange:', error.response ? error.response.body : error.message);
     } finally {
       const endTime = performance.now();
-      logPerformanceMetrics(startTime, endTime, startDate, new Date());
+      logPerformanceMetrics("RabbitMQ: BindQueueToExchange",startTime, endTime, startDate, new Date());
     }
   }
 
@@ -401,7 +401,7 @@ class OnboardingServer {
       console.error('Failed to publish message:', error.response ? error.response.body : error.message);
     } finally {
       const endTime = performance.now();
-      logPerformanceMetrics(startTime, endTime, startDate, new Date());
+      logPerformanceMetrics("RabbitMQ: PublishMessage",startTime, endTime, startDate, new Date());
     }
   }
 
@@ -425,7 +425,7 @@ class OnboardingServer {
       console.error(`Error deleting user: ${error.message}`);
     } finally {
       const endTime = performance.now();
-      logPerformanceMetrics(startTime, endTime, startDate, new Date());
+      logPerformanceMetrics("RabbitMQ: DeleteUser",startTime, endTime, startDate, new Date());
     }
   }
   
@@ -464,7 +464,7 @@ class OnboardingServer {
       console.error(`Error setting permissions: ${error.message}`);
     } finally {
       const endTime = performance.now();
-      logPerformanceMetrics(startTime, endTime, startDate, new Date());
+      logPerformanceMetrics("RabbitMQ: SetPermissions",startTime, endTime, startDate, new Date());
     }
   }
 }
