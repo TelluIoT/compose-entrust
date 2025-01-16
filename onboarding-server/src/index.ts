@@ -98,52 +98,71 @@ app.get("/requestClaim", async (req: Request, res: Response) => {
   res.status(200).json({ Status: "OK" });
 });
 
-// Called by the gateway when it has reqistered successfully.
+// Called by the gateway when it has registered successfully.
 app.get('/getCredentials', async (req: Request, res: Response) => {
+  const startTime = performance.now();
+  const startDate = new Date();
+
   const macAddress: string | undefined = req.query.macAddress as string;
   const secret: string | undefined = req.query.secret as string;
+
   // Check if not macAddress
   if (!macAddress) {
+    const endTime = performance.now();
+    logPerformanceMetrics(startTime, endTime, startDate, new Date());
     return res.status(400).json({ error: 'Missing parameter' });
   }
+
   // Check if not secret
   if (!secret) {
-    return res.status(400).send("Missing parameters")
+    const endTime = performance.now();
+    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    return res.status(400).send("Missing parameters");
   }
 
-  // checks the secret against the database entry
+  // Checks the secret against the database entry
   // const queryResult = await db.query('SELECT secret, claimRequested, claimed FROM gateways WHERE macAddress = $1', [macAddress])
   const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
   if (secret !== storedSecret) {
+    const endTime = performance.now();
+    logPerformanceMetrics(startTime, endTime, startDate, new Date());
     return res.status(403).send("No match for gateway/secret");
   }
 
-  console.log('returned row status: ', claimRequested, claimed);
+  console.log('Returned row status: ', claimRequested, claimed);
 
   if (claimRequested === false) {
-    return res.status(400).send("The device is not in pairing mode!")
+    const endTime = performance.now();
+    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    return res.status(400).send("The device is not in pairing mode!");
   }
 
   if (claimed === true) {
-    return res.status(400).send("The device is already claimed!") 
-  } 
+    const endTime = performance.now();
+    logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    return res.status(400).send("The device is already claimed!");
+  }
 
-  // creates new mqtt users
-  const mqttCredentials = { username: macAddress, password: macAddress+'1234' };
+  // Creates new MQTT users
+  const mqttCredentials = { username: macAddress, password: macAddress + '1234' };
   const onboardingServer = new OnboardingServer();
   const createdUser = await onboardingServer.createUser(mqttCredentials.username, mqttCredentials.password);
   const setPermissions = await onboardingServer.setPermissions(mqttCredentials.username);
+
   // Creates a new exchange
   // const newExchange = await onboardingServer.createExchange(macAddress);
   const newBinding = await onboardingServer.createQueue(macAddress);
   const newQueue = await onboardingServer.bindQueueToExchange(macAddress);
   const message = await onboardingServer.publishMessage(macAddress, 'AK');
 
-  // update status
+  // Update status
   await db.updateGatewayStatus({ macAddress, claimRequested: false, claimed: true });
-  
+
+  const endTime = performance.now();
+  logPerformanceMetrics(startTime, endTime, startDate, new Date());
   res.status(200).json({ mqttCredentials });
 });
+
 
 app.get("/unclaim", async(req: Request, res: Response) => {
   const macAddress: string | undefined = req.query.macAddress as string;
