@@ -1,6 +1,8 @@
 import express, { Request, Response } from 'express';
 import got from 'got';
 import { Database, initDB } from './db.js';
+import { performance } from 'perf_hooks';
+import { logPerformanceMetrics } from "./utils.js";
 
 const RABBITMQ_HOST = process.env.RABBITMQ_HOST || 'rabbitmq';
 const RABBITMQ_PORT = process.env.RABBITMQ_PORT || '15672';
@@ -21,162 +23,226 @@ console.log('setting up the express server, with updated build!');
 
 //endpoint 3010: registers new users in the .sqlite database
 app.get('/register', async (req: Request, res: Response) => {
-  console.log('received register request for MAC:'+ req.query.macAddress);
+  const startTime = performance.now();
+  const startDate = new Date();
+  console.log('Received register request for MAC:', req.query.macAddress);
 
   const macAddress: string | undefined = req.query.macAddress as string;
   if (!macAddress) {
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: Register",startTime, endTime, startDate, new Date()); 
     return res.status(400).json({ error: 'Missing parameter' });
   }
 
-  const computedSecret = macAddress+'abcd';
+  const computedSecret = macAddress + 'abcd';
 
-  // register in database
   try {
     await db.addGateway(macAddress, computedSecret);
-    res.status(201).json({ message: `Gateway ${macAddress} added successfully!`, computedSecret });
-
+    res.status(201).json({
+      message: `Gateway ${macAddress} added successfully!`,
+      computedSecret,
+    });
   } catch (err) {
     console.error('Error inserting gateway:', err);
-    res.status(500).json({ error: `Failed to add gateway: ${macAddress} `});
+    res.status(500).json({ error: `Failed to add gateway: ${macAddress}` });
+  } finally {
+    const endTime = performance.now(); 
+    logPerformanceMetrics("Onboarding-API: Register",startTime, endTime, startDate, new Date()) 
   }
 });
 
-// // Called by the customer admin when assigning the gateway
-// // to the acccount. Changes the gateway into the pairing mode.
-app.get("/requestClaim", async(req: Request, res: Response) => {
+// Called by the customer admin when assigning the gateway
+// to the account. Changes the gateway into the pairing mode.
+app.get("/requestClaim", async (req: Request, res: Response) => {
+  const startTime = performance.now();
+  const startDate = new Date();
+
   const macAddress: string | undefined = req.query.macAddress as string;
   const secret: string | undefined = req.query.secret as string;
+
   // Check parameters
   if (!macAddress || !secret) {
-    return res.status(400).send('Missing parameterss')
-  } 
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: RequestClaim",startTime, endTime, startDate, new Date());
+    return res.status(400).send("Missing parameters");
+  }
 
-  // checks the secret against the database entry
+  // Checks the secret against the database entry
   const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
   if (secret !== storedSecret) {
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: RequestClaim",startTime, endTime, startDate, new Date());
     return res.status(403).send("No match for gateway/secret");
   }
 
-  console.log('returned row status: ', claimRequested, claimed);
+  console.log("Returned row status: ", claimRequested, claimed);
 
   if (claimRequested === true) {
-    return res.status(400).send("The device is already in pairing mode!")
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: RequestClaim",startTime, endTime, startDate, new Date());
+    return res.status(400).send("The device is already in pairing mode!");
   }
 
   if (claimed === true) {
-    return res.status(400).send("The device is already claimed!") 
-  } 
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: RequestClaim",startTime, endTime, startDate, new Date());
+    return res.status(400).send("The device is already claimed!");
+  }
 
-  // update status
+  // Update status
   await db.updateGatewayStatus({ macAddress, claimRequested: true, claimed: false });
 
-  console.log('Endpoint /Claim executed command.')
-  res.status(200).json({"Status": "OK"});
+  console.log("Endpoint /Claim executed command.");
+  const endTime = performance.now();
+  logPerformanceMetrics("Onboarding-API: RequestClaim",startTime, endTime, startDate, new Date());
+  res.status(200).json({ Status: "OK" });
 });
 
-// Called by the gateway when it has reqistered successfully.
+// Called by the gateway when it has registered successfully.
 app.get('/getCredentials', async (req: Request, res: Response) => {
+  const startTime = performance.now();
+  const startDate = new Date();
+
   const macAddress: string | undefined = req.query.macAddress as string;
   const secret: string | undefined = req.query.secret as string;
+
   // Check if not macAddress
   if (!macAddress) {
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: GetCredentials",startTime, endTime, startDate, new Date());
     return res.status(400).json({ error: 'Missing parameter' });
   }
+
   // Check if not secret
   if (!secret) {
-    return res.status(400).send("Missing parameters")
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: GetCredentials",startTime, endTime, startDate, new Date());
+    return res.status(400).send("Missing parameters");
   }
 
-  // checks the secret against the database entry
+  // Checks the secret against the database entry
   // const queryResult = await db.query('SELECT secret, claimRequested, claimed FROM gateways WHERE macAddress = $1', [macAddress])
   const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
   if (secret !== storedSecret) {
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: GetCredentials",startTime, endTime, startDate, new Date());
     return res.status(403).send("No match for gateway/secret");
   }
 
-  console.log('returned row status: ', claimRequested, claimed);
+  console.log('Returned row status: ', claimRequested, claimed);
 
   if (claimRequested === false) {
-    return res.status(400).send("The device is not in pairing mode!")
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: GetCredentials",startTime, endTime, startDate, new Date());
+    return res.status(400).send("The device is not in pairing mode!");
   }
 
   if (claimed === true) {
-    return res.status(400).send("The device is already claimed!") 
-  } 
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: GetCredentials",startTime, endTime, startDate, new Date());
+    return res.status(400).send("The device is already claimed!");
+  }
 
-  // creates new mqtt users
-  const mqttCredentials = { username: macAddress, password: macAddress+'1234' };
+  // Creates new MQTT users
+  const mqttCredentials = { username: macAddress, password: macAddress + '1234' };
   const onboardingServer = new OnboardingServer();
   const createdUser = await onboardingServer.createUser(mqttCredentials.username, mqttCredentials.password);
   const setPermissions = await onboardingServer.setPermissions(mqttCredentials.username);
+
   // Creates a new exchange
   // const newExchange = await onboardingServer.createExchange(macAddress);
   const newBinding = await onboardingServer.createQueue(macAddress);
   const newQueue = await onboardingServer.bindQueueToExchange(macAddress);
   const message = await onboardingServer.publishMessage(macAddress, 'AK');
 
-  // update status
+  // Update status
   await db.updateGatewayStatus({ macAddress, claimRequested: false, claimed: true });
-  
+
+  const endTime = performance.now();
+  logPerformanceMetrics("Onboarding-API: GetCredentials",startTime, endTime, startDate, new Date());
   res.status(200).json({ mqttCredentials });
 });
 
-app.get("/unclaim", async(req: Request, res: Response) => {
+
+app.get("/unclaim", async (req: Request, res: Response) => {
+  const startTime = performance.now();
+  const startDate = new Date();
+
   const macAddress: string | undefined = req.query.macAddress as string;
   const secret: string | undefined = req.query.secret as string;
+
   // Check if not macAddress
   if (!macAddress) {
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: Unclaim",startTime, endTime, startDate, new Date());
     return res.status(400).json({ error: 'Missing parameter' });
   }
+
   // Check if not secret
   if (!secret) {
-    return res.status(400).send("Missing parameters")
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: Unclaim",startTime, endTime, startDate, new Date());
+    return res.status(400).send("Missing parameters");
   }
 
-  // checks the secret against the database entry
+  // Checks the secret against the database entry
   const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
   if (secret !== storedSecret) {
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: Unclaim",startTime, endTime, startDate, new Date());
     return res.status(403).send("No match for gateway/secret");
   }
 
-  console.log('returned row status: ', claimRequested, claimed);
+  console.log("Returned row status: ", claimRequested, claimed);
 
   if (claimed === false) {
-    return res.status(400).send("The device is not yet claimed!") 
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: Unclaim",startTime, endTime, startDate, new Date());
+    return res.status(400).send("The device is not yet claimed!");
   }
 
   const onboardingServer = new OnboardingServer();
-  const deleteduser = await onboardingServer.deleteUser(macAddress)
+  const deleteduser = await onboardingServer.deleteUser(macAddress);
 
   await db.updateGatewayStatus({ macAddress, claimRequested: false, claimed: false });
-  
-  console.log('Endpoint /Unclaim executed command.')
 
-  //TODO SEND A MESSAGES TO THE GATEWAY
+  console.log("Endpoint /Unclaim executed command.");
 
-  res.status(200).json({"Status": "OK"}); 
+  // TODO: Send a message to the gateway
+  const endTime = performance.now();
+  logPerformanceMetrics("Onboarding-API: Unclaim",startTime, endTime, startDate, new Date());
+  res.status(200).json({ Status: "OK" });
 });
 
 
 // endpoint on 3010: Wipe (user)
-  app.get("/Wipe", async(req: Request, res: Response) => {
-    const macAddress: string | undefined = req.query.macAddress as string;
-  // checks if not macAddress
-  if (!macAddress) {
-    return res.status(400).send('Missing parameters')
-  }
-  
-  // deletes user from RabbitMQ DB
-  const onboardingServer = new OnboardingServer();
-  const deleteduser = await onboardingServer.deleteUser(macAddress)
-  
-  // TODO: Remove also user's exchange
-  
-  // deletes user from REST_DB
-  await db.removeGateway({macAddress})
+app.get("/Wipe", async (req: Request, res: Response) => {
+  const startTime = performance.now();
+  const startDate = new Date();
 
-  res.status(200).json({"Status": "OK"});
-})
+  const macAddress: string | undefined = req.query.macAddress as string;
+
+  // Checks if not macAddress
+  if (!macAddress) {
+    const endTime = performance.now();
+    logPerformanceMetrics("Onboarding-API: Wipe",startTime, endTime, startDate, new Date());
+    return res.status(400).send("Missing parameters");
+  }
+
+  // Deletes user from RabbitMQ DB
+  const onboardingServer = new OnboardingServer();
+  const deleteduser = await onboardingServer.deleteUser(macAddress);
+
+  // TODO: Remove also user's exchange
+
+  // Deletes user from REST_DB
+  await db.removeGateway({ macAddress });
+
+  const endTime = performance.now();
+  logPerformanceMetrics("Onboarding-API: Wipe",startTime, endTime, startDate, new Date());
+  res.status(200).json({ Status: "OK" });
+});
+
 
 
 app.listen(port, () => {
@@ -195,25 +261,25 @@ app.listen(port, () => {
 
 
 // Step I: http://localhost:3010/register?macAddress=user2
-// Step II: http://localhost:3010/Claim?macAddress=user2
-// Step III: http://localhost:3010/getCredentials?macAddress=user2
-// Step IV: http://localhost:3010/Claim?macAddress=user2
+// Step II: http://localhost:3010/requestClaim?macAddress=user2&secret=user2abcd
+// Step III: http://localhost:3010/getCredentials?macAddress=user2&secret=user2abcd
+// Step IV: http://localhost:3010/requestClaim?macAddress=user2&secret=user2abcd
 
 
 class OnboardingServer {
 
-  
-
-  // creates a new user
-  async createUser(username: string, password: string) {
-
+  // Creates a new user
+  async createUser(username: string, password: string): Promise<void> {
+    const startTime = performance.now();
+    const startDate = new Date();
     const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/users`;
-    console.log(`${url}/${username}`)
+    console.log(`${url}/${username}`);
+
     const newUser = {
       password,
       tags: ''
     };
-  
+
     try {
       // Adding a new user via RabbitMQ HTTP API
       const response = await got.put(`${url}/${username}`, {
@@ -222,7 +288,7 @@ class OnboardingServer {
         username: RABBITMQ_USERNAME,
         password: RABBITMQ_PASSWORD,
       });
-  
+
       if (response.statusCode === 201) {
         console.log('User created successfully!');
       } else {
@@ -230,6 +296,9 @@ class OnboardingServer {
       }
     } catch (error: any) {
       console.error(`Error creating user: ${error.message}`);
+    } finally {
+      const endTime = performance.now();
+      logPerformanceMetrics("RabbitMQ: CreateUser",startTime, endTime, startDate, new Date());
     }
   };
 
@@ -255,98 +324,117 @@ class OnboardingServer {
   //   }
   // }
 
-// creates a queue
-async createQueue(username: string) {
-  const vhost = '/'
-  // const queue = 'onboarding queue';
-  const u = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/queues/${encodeURIComponent(vhost)}/${encodeURIComponent(username)}`;
-  console.log(u)
-  try {
-      const response = await got.put(u, {
-          json: {
-              durable: true, // The queue should survive server restarts
-          },
-          responseType: 'json',
-          username: RABBITMQ_USERNAME,
-          password: RABBITMQ_PASSWORD
+  // Creates a queue
+  async createQueue(username: string): Promise<void> {
+    const startTime = performance.now();
+    const startDate = new Date();
+    const vhost = '/';
+    // const queue = 'onboarding queue';
+    const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/queues/${encodeURIComponent(vhost)}/${encodeURIComponent(username)}`;
+    console.log(url);
+
+    try {
+      const response = await got.put(url, {
+        json: { 
+          durable: true, // The queue should survive server restarts
+        },
+        responseType: 'json',
+        username: RABBITMQ_USERNAME,
+        password: RABBITMQ_PASSWORD
       });
-      
+
       console.log(`Queue '${username}' created successfully:`, response.body);
-  } catch (error: any) {
+    } catch (error: any) {
       console.error('Failed to create queue:', error.response ? error.response.body : error.message);
+    } finally {
+      const endTime = performance.now();
+      logPerformanceMetrics("RabbitMQ: CreateQueue",startTime, endTime, startDate, new Date());
+    }
   }
-}
 
-// Binds a queue to an exchange with a routing key (topic)
-async bindQueueToExchange(username: string) {
-  const vhost = '/'
-  const u = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/bindings/${encodeURIComponent(vhost)}/e/amq.topic/q/${encodeURIComponent(username)}`;
+  // Binds a queue to an exchange with a routing key (topic)
+  async bindQueueToExchange(username: string): Promise<void> {
+    const startTime = performance.now();
+    const startDate = new Date();
+    const vhost = '/';
+    const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/bindings/${encodeURIComponent(vhost)}/e/amq.topic/q/${encodeURIComponent(username)}`;
 
-  try {
-      const response = await got.post(u, {
-          json: {
-              routing_key: `${username}`,
-          },
-          responseType: 'json',
-          username: RABBITMQ_USERNAME,
-          password: RABBITMQ_PASSWORD
+    try {
+      const response = await got.post(url, {
+        json: { routing_key: `${username}` },
+        responseType: 'json',
+        username: RABBITMQ_USERNAME,
+        password: RABBITMQ_PASSWORD
       });
       console.log(`Queue '${username}' bound to exchange amq.topic with routing key '${username}'`);
-  } catch (error: any) {
+    } catch (error: any) {
       console.error('Failed to bind queue to exchange:', error.response ? error.response.body : error.message);
+    } finally {
+      const endTime = performance.now();
+      logPerformanceMetrics("RabbitMQ: BindQueueToExchange",startTime, endTime, startDate, new Date());
+    }
   }
-}
 
-// Publish a message to the exchange
-async publishMessage(username: string, message: string) {
-  const vhost = '/';
-  const u = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/exchanges/${encodeURIComponent(vhost)}/amq.topic/publish`;
-  const rounting_key = `${username}`;
-  console.log(rounting_key)
+  // Publishes a message to the exchange
+  async publishMessage(username: string, message: string): Promise<void> {
+    const startTime = performance.now();
+    const startDate = new Date();
+    const vhost = '/';
+    const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/exchanges/${encodeURIComponent(vhost)}/amq.topic/publish`;
+    const rounting_key = `${username}`;
+    console.log(rounting_key);
 
-  try {
-      const response = await got.post(u, {
-          json: {
-              routing_key: rounting_key,
-              payload: message,
-              payload_encoding: 'string',
-              properties: {}
-          },
-          responseType: 'json',
-          username: RABBITMQ_USERNAME,
-          password: RABBITMQ_PASSWORD
+    try {
+      const response = await got.post(url, {
+        json: {
+          routing_key: rounting_key,
+          payload: message,
+          payload_encoding: 'string',
+          properties: {}
+        },
+        responseType: 'json',
+        username: RABBITMQ_USERNAME,
+        password: RABBITMQ_PASSWORD
       });
       console.log(`Message published to exchange amq.topic with routing key '${username}':`, response.body);
-  } catch (error: any) {
+    } catch (error: any) {
       console.error('Failed to publish message:', error.response ? error.response.body : error.message);
+    } finally {
+      const endTime = performance.now();
+      logPerformanceMetrics("RabbitMQ: PublishMessage",startTime, endTime, startDate, new Date());
+    }
   }
-}
 
-async deleteUser(username: string) {
-
-  const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/users`
-  try {
-  const response = await got.delete(`${url}/${username}`, {
-    responseType: 'json',
-    username: RABBITMQ_USERNAME,
+  async deleteUser(username: string): Promise<void> {
+    const startTime = performance.now();
+    const startDate = new Date();
+    const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/users`;
+    try {
+      const response = await got.delete(`${url}/${username}`, {
+        responseType: 'json',
+        username: RABBITMQ_USERNAME,
     password: RABBITMQ_PASSWORD,
-  });
-  
-  if (response.statusCode === 204) {
-    console.log('User deleted successfully!');
-  } else {
-    console.log(`Failed to delete user ${response.statusCode} - ${response.body}`);
-  } 
-  } catch (error: any) {
-    console.error(`Error creating user ${error.message}`);
+      });
+
+      if (response.statusCode === 204) {
+        console.log('User deleted successfully!');
+      } else {
+        console.log(`Failed to delete user: ${response.statusCode} - ${response.body}`);
+      }
+    } catch (error: any) {
+      console.error(`Error deleting user: ${error.message}`);
+    } finally {
+      const endTime = performance.now();
+      logPerformanceMetrics("RabbitMQ: DeleteUser",startTime, endTime, startDate, new Date());
+    }
   }
-}
-
-  async setPermissions(user: string) {
-
-    const vhost = '/'
+  
+  async setPermissions(user: string): Promise<void> {
+    const startTime = performance.now();
+    const startDate = new Date();
+    const vhost = '/';
     const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/permissions/${encodeURIComponent(vhost)}/${user}`;
-    console.log(url)
+    console.log(url);
     // const permissions = {
     // configure: '.*', // No permission to configure anything
     // write: `^${user}`, // Allow writing only to the specific queue
@@ -357,7 +445,7 @@ async deleteUser(username: string) {
       configure: '.*',
       write: `.*`,
       read: `.*`
-      };
+    };
 
     try {
       const response = await got.put(url, {
@@ -374,6 +462,9 @@ async deleteUser(username: string) {
       }
     } catch (error: any) {
       console.error(`Error setting permissions: ${error.message}`);
+    } finally {
+      const endTime = performance.now();
+      logPerformanceMetrics("RabbitMQ: SetPermissions",startTime, endTime, startDate, new Date());
     }
-  };
+  }
 }
