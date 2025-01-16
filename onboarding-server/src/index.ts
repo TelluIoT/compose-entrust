@@ -268,18 +268,18 @@ app.listen(port, () => {
 
 class OnboardingServer {
 
-  
-
-  // creates a new user
-  async createUser(username: string, password: string) {
-
+  // Creates a new user
+  async createUser(username: string, password: string): Promise<void> {
+    const startTime = performance.now();
+    const startDate = new Date();
     const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/users`;
-    console.log(`${url}/${username}`)
+    console.log(`${url}/${username}`);
+
     const newUser = {
       password,
       tags: ''
     };
-  
+
     try {
       // Adding a new user via RabbitMQ HTTP API
       const response = await got.put(`${url}/${username}`, {
@@ -288,7 +288,7 @@ class OnboardingServer {
         username: RABBITMQ_USERNAME,
         password: RABBITMQ_PASSWORD,
       });
-  
+
       if (response.statusCode === 201) {
         console.log('User created successfully!');
       } else {
@@ -296,6 +296,9 @@ class OnboardingServer {
       }
     } catch (error: any) {
       console.error(`Error creating user: ${error.message}`);
+    } finally {
+      const endTime = performance.now();
+      logPerformanceMetrics(startTime, endTime, startDate, new Date());
     }
   };
 
@@ -321,98 +324,117 @@ class OnboardingServer {
   //   }
   // }
 
-// creates a queue
-async createQueue(username: string) {
-  const vhost = '/'
-  // const queue = 'onboarding queue';
-  const u = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/queues/${encodeURIComponent(vhost)}/${encodeURIComponent(username)}`;
-  console.log(u)
-  try {
-      const response = await got.put(u, {
-          json: {
-              durable: true, // The queue should survive server restarts
-          },
-          responseType: 'json',
-          username: RABBITMQ_USERNAME,
-          password: RABBITMQ_PASSWORD
+  // Creates a queue
+  async createQueue(username: string): Promise<void> {
+    const startTime = performance.now();
+    const startDate = new Date();
+    const vhost = '/';
+    // const queue = 'onboarding queue';
+    const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/queues/${encodeURIComponent(vhost)}/${encodeURIComponent(username)}`;
+    console.log(url);
+
+    try {
+      const response = await got.put(url, {
+        json: { 
+          durable: true, // The queue should survive server restarts
+        },
+        responseType: 'json',
+        username: RABBITMQ_USERNAME,
+        password: RABBITMQ_PASSWORD
       });
-      
+
       console.log(`Queue '${username}' created successfully:`, response.body);
-  } catch (error: any) {
+    } catch (error: any) {
       console.error('Failed to create queue:', error.response ? error.response.body : error.message);
+    } finally {
+      const endTime = performance.now();
+      logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    }
   }
-}
 
-// Binds a queue to an exchange with a routing key (topic)
-async bindQueueToExchange(username: string) {
-  const vhost = '/'
-  const u = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/bindings/${encodeURIComponent(vhost)}/e/amq.topic/q/${encodeURIComponent(username)}`;
+  // Binds a queue to an exchange with a routing key (topic)
+  async bindQueueToExchange(username: string): Promise<void> {
+    const startTime = performance.now();
+    const startDate = new Date();
+    const vhost = '/';
+    const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/bindings/${encodeURIComponent(vhost)}/e/amq.topic/q/${encodeURIComponent(username)}`;
 
-  try {
-      const response = await got.post(u, {
-          json: {
-              routing_key: `${username}`,
-          },
-          responseType: 'json',
-          username: RABBITMQ_USERNAME,
-          password: RABBITMQ_PASSWORD
+    try {
+      const response = await got.post(url, {
+        json: { routing_key: `${username}` },
+        responseType: 'json',
+        username: RABBITMQ_USERNAME,
+        password: RABBITMQ_PASSWORD
       });
       console.log(`Queue '${username}' bound to exchange amq.topic with routing key '${username}'`);
-  } catch (error: any) {
+    } catch (error: any) {
       console.error('Failed to bind queue to exchange:', error.response ? error.response.body : error.message);
+    } finally {
+      const endTime = performance.now();
+      logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    }
   }
-}
 
-// Publish a message to the exchange
-async publishMessage(username: string, message: string) {
-  const vhost = '/';
-  const u = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/exchanges/${encodeURIComponent(vhost)}/amq.topic/publish`;
-  const rounting_key = `${username}`;
-  console.log(rounting_key)
+  // Publishes a message to the exchange
+  async publishMessage(username: string, message: string): Promise<void> {
+    const startTime = performance.now();
+    const startDate = new Date();
+    const vhost = '/';
+    const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/exchanges/${encodeURIComponent(vhost)}/amq.topic/publish`;
+    const rounting_key = `${username}`;
+    console.log(rounting_key);
 
-  try {
-      const response = await got.post(u, {
-          json: {
-              routing_key: rounting_key,
-              payload: message,
-              payload_encoding: 'string',
-              properties: {}
-          },
-          responseType: 'json',
-          username: RABBITMQ_USERNAME,
-          password: RABBITMQ_PASSWORD
+    try {
+      const response = await got.post(url, {
+        json: {
+          routing_key: rounting_key,
+          payload: message,
+          payload_encoding: 'string',
+          properties: {}
+        },
+        responseType: 'json',
+        username: RABBITMQ_USERNAME,
+        password: RABBITMQ_PASSWORD
       });
       console.log(`Message published to exchange amq.topic with routing key '${username}':`, response.body);
-  } catch (error: any) {
+    } catch (error: any) {
       console.error('Failed to publish message:', error.response ? error.response.body : error.message);
+    } finally {
+      const endTime = performance.now();
+      logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    }
   }
-}
 
-async deleteUser(username: string) {
-
-  const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/users`
-  try {
-  const response = await got.delete(`${url}/${username}`, {
-    responseType: 'json',
-    username: RABBITMQ_USERNAME,
+  async deleteUser(username: string): Promise<void> {
+    const startTime = performance.now();
+    const startDate = new Date();
+    const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/users`;
+    try {
+      const response = await got.delete(`${url}/${username}`, {
+        responseType: 'json',
+        username: RABBITMQ_USERNAME,
     password: RABBITMQ_PASSWORD,
-  });
-  
-  if (response.statusCode === 204) {
-    console.log('User deleted successfully!');
-  } else {
-    console.log(`Failed to delete user ${response.statusCode} - ${response.body}`);
-  } 
-  } catch (error: any) {
-    console.error(`Error creating user ${error.message}`);
+      });
+
+      if (response.statusCode === 204) {
+        console.log('User deleted successfully!');
+      } else {
+        console.log(`Failed to delete user: ${response.statusCode} - ${response.body}`);
+      }
+    } catch (error: any) {
+      console.error(`Error deleting user: ${error.message}`);
+    } finally {
+      const endTime = performance.now();
+      logPerformanceMetrics(startTime, endTime, startDate, new Date());
+    }
   }
-}
-
-  async setPermissions(user: string) {
-
-    const vhost = '/'
+  
+  async setPermissions(user: string): Promise<void> {
+    const startTime = performance.now();
+    const startDate = new Date();
+    const vhost = '/';
     const url = `http://${RABBITMQ_HOST}:${RABBITMQ_PORT}/api/permissions/${encodeURIComponent(vhost)}/${user}`;
-    console.log(url)
+    console.log(url);
     // const permissions = {
     // configure: '.*', // No permission to configure anything
     // write: `^${user}`, // Allow writing only to the specific queue
@@ -423,7 +445,7 @@ async deleteUser(username: string) {
       configure: '.*',
       write: `.*`,
       read: `.*`
-      };
+    };
 
     try {
       const response = await got.put(url, {
@@ -440,6 +462,9 @@ async deleteUser(username: string) {
       }
     } catch (error: any) {
       console.error(`Error setting permissions: ${error.message}`);
+    } finally {
+      const endTime = performance.now();
+      logPerformanceMetrics(startTime, endTime, startDate, new Date());
     }
-  };
+  }
 }
