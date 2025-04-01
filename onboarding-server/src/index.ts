@@ -214,6 +214,29 @@ app.get("/unclaim", async (req: Request, res: Response) => {
   res.status(200).json({ Status: "OK" });
 });
 
+app.post('/publishMessage', async (req: Request, res: Response) => {
+  const startTime = performance.now();
+  const startDate = new Date();
+
+  const macAddress: string | undefined = req.query.macAddress as string;
+  
+  const message = req.body?.message;
+
+  // Check parameters
+  if (!macAddress) {
+    return res.status(400).json({ error: 'Missing parameter macAddress' });
+  } else if (message) return res.status(400).json({ error: 'Missing body parameter "message"' });
+
+  const onboardingServer = new OnboardingServer();
+  await onboardingServer.publishMessage(macAddress, message);
+
+  console.log("Endpoint /publishMessage executed command.");
+
+  const endTime = performance.now();
+  logPerformanceMetrics("Onboarding-API: publishMessage",startTime, endTime, startDate, new Date());
+  res.status(200).json({ Status: "OK" });
+});
+
 
 // endpoint on 3010: Wipe (user)
 app.get("/Wipe", async (req: Request, res: Response) => {
@@ -468,3 +491,27 @@ class OnboardingServer {
     }
   }
 }
+
+// class Logger {
+//   private functionName: string;
+//   private startTime: number;
+//   private startDate: Date;
+
+//   constructor(functionName: string) {
+//     this.functionName = functionName;
+//   }
+
+//   start() {
+//     const startTime = performance.now();
+//     const startDate = new Date();
+//   }
+
+//   end() {
+//     const endTime = performance.now();
+//       logPerformanceMetrics("RabbitMQ: DeleteUser",startTime, endTime, startDate, new Date());
+//   }
+
+
+
+
+// }
