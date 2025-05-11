@@ -218,14 +218,12 @@ app.post('/publishMessage', async (req: Request, res: Response) => {
   const startTime = performance.now();
   const startDate = new Date();
 
-  const macAddress: string | undefined = req.query.macAddress as string;
-  
-  const message = req.body?.message;
+  const { message, macAddress, secret } = req.body ?? {}
 
   // Check parameters
-  if (!macAddress) {
-    return res.status(400).json({ error: 'Missing parameter macAddress' });
-  } else if (message) return res.status(400).json({ error: 'Missing body parameter "message"' });
+  if (!macAddress || !secret || !message) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
 
   const onboardingServer = new OnboardingServer();
   await onboardingServer.publishMessage(macAddress, message);
