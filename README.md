@@ -20,11 +20,11 @@ You might need to run with "sudo" prefix.
    ```
 2. Push the tarball to the AWS server (requires ssh set up according to https://telludoc.atlassian.net/wiki/spaces/TDO/pages/2675179619/AWS+Server+for+R+I+projects)
    ```
-   scp -i ~/.ssh/eratosthenes.pem compose-entrust.tar.gz ubuntu@ec2-3-254-120-13.eu-west-1.compute.amazonaws.com:entrust
+   scp -i ~/.ssh/eratosthenes.pem compose-entrust.tar.gz ubuntu@ec2-34-240-4-8.eu-west-1.compute.amazonaws.com:entrust
    ```
 3. SSH into the remote server
    ```
-   ssh -i ~/.ssh/eratosthenes.pem ubuntu@ec2-3-254-120-13.eu-west-1.compute.amazonaws.com
+   ssh -i ~/.ssh/eratosthenes.pem ubuntu@ec2-34-240-4-8.eu-west-1.compute.amazonaws.com
    ```
 4. Extract the tarball
 
