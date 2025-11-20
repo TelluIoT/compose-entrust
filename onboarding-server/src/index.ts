@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import crypto from 'crypto';
 import got from 'got';
 import { Database, initDB } from './db.js';
 import { performance } from 'perf_hooks';
@@ -34,6 +35,11 @@ app.get('/register', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Missing parameter' });
   }
 
+  // TODO: here we compute an actually cryptographically secure key, which would be used in production.
+  const actualComputedSecret = crypto.randomBytes(32).toString('base64url'); // URL-safe base64 encoding
+  console.log('Generated key for device ', macAddress, ':', actualComputedSecret);
+
+  // for dev/test purposes we return the simpler fake key which is predictable instead.
   const computedSecret = macAddress + 'abcd';
 
   try {
@@ -242,17 +248,20 @@ app.get("/Wipe", async (req: Request, res: Response) => {
   const startDate = new Date();
 
   const macAddress: string | undefined = req.query.macAddress as string;
+  const onlydb: string | undefined = req.query.onlydb as string;
 
   // Checks if not macAddress
   if (!macAddress) {
     const endTime = performance.now();
-    logPerformanceMetrics("Onboarding-API: Wipe",startTime, endTime, startDate, new Date());
+    // logPerformanceMetrics("Onboarding-API: Wipe",startTime, endTime, startDate, new Date());
     return res.status(400).send("Missing parameters");
   }
 
   // Deletes user from RabbitMQ DB
-  const onboardingServer = new OnboardingServer();
-  const deleteduser = await onboardingServer.deleteUser(macAddress);
+  if (!onlydb) {
+    const onboardingServer = new OnboardingServer();
+    const deleteduser = await onboardingServer.deleteUser(macAddress);
+  }
 
   // TODO: Remove also user's exchange
 
@@ -260,7 +269,7 @@ app.get("/Wipe", async (req: Request, res: Response) => {
   await db.removeGateway({ macAddress });
 
   const endTime = performance.now();
-  logPerformanceMetrics("Onboarding-API: Wipe",startTime, endTime, startDate, new Date());
+  // logPerformanceMetrics("Onboarding-API: Wipe",startTime, endTime, startDate, new Date());
   res.status(200).json({ Status: "OK" });
 });
 
