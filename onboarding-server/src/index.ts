@@ -21,6 +21,33 @@ app.use(express.json());
 
 console.log('setting up the express server, with updated build!');
 
+function hashSecret(secret: string): string {
+  return crypto.createHash('sha256').update(secret).digest('hex');
+}
+
+function isHexSha256(secret: string): boolean {
+  return /^[a-f0-9]{64}$/i.test(secret);
+}
+
+function secretsMatch(providedSecret: string, storedSecretHash?: string): boolean {
+  if (!storedSecretHash || !isHexSha256(storedSecretHash)) {
+    return false;
+  }
+
+  const normalizedProvidedSecret = isHexSha256(providedSecret)
+    ? providedSecret.toLowerCase()
+    : hashSecret(providedSecret);
+
+  const providedBuffer = Buffer.from(normalizedProvidedSecret, 'hex');
+  const storedBuffer = Buffer.from(storedSecretHash.toLowerCase(), 'hex');
+
+  if (providedBuffer.length !== storedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(Uint8Array.from(providedBuffer), Uint8Array.from(storedBuffer));
+}
+
 
 //endpoint 3010: registers new users in the .sqlite database
 app.get('/register', async (req: Request, res: Response) => {
@@ -36,11 +63,13 @@ app.get('/register', async (req: Request, res: Response) => {
   }
 
   // TODO: here we compute an actually cryptographically secure key, which would be used in production.
-  const actualComputedSecret = crypto.randomBytes(32).toString('base64url'); // URL-safe base64 encoding
-  console.log('Generated key for device ', macAddress, ':', actualComputedSecret);
+  const computedSecret1 = macAddress + 'abcd';
+
+  const hashedSecret = hashSecret(computedSecret1);
 
   // for dev/test purposes we return the simpler fake key which is predictable instead.
-  const computedSecret = macAddress + 'abcd';
+  // const computedSecret = macAddress + 'abcd';
+  const computedSecret = hashedSecret;
 
   try {
     await db.addGateway(macAddress, computedSecret);
@@ -75,7 +104,8 @@ app.get("/requestClaim", async (req: Request, res: Response) => {
 
   // Checks the secret against the database entry
   const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
-  if (secret !== storedSecret) {
+
+  if (!secretsMatch(secret, storedSecret)) {
     const endTime = performance.now();
     logPerformanceMetrics("Onboarding-API: RequestClaim",startTime, endTime, startDate, new Date());
     return res.status(403).send("No match for gateway/secret");
@@ -96,7 +126,7 @@ app.get("/requestClaim", async (req: Request, res: Response) => {
   }
 
   // Update status
-  await db.updateGatewayStatus({ macAddress, claimRequested: true, claimed: false });
+  await db.updateGatewayStatus({ macAddress, claimRequested: true, claimed: true }); // we shortcut a little bit here for the demo
 
   console.log("Endpoint /Claim executed command.");
   const endTime = performance.now();
@@ -129,7 +159,7 @@ app.get('/getCredentials', async (req: Request, res: Response) => {
   // Checks the secret against the database entry
   // const queryResult = await db.query('SELECT secret, claimRequested, claimed FROM gateways WHERE macAddress = $1', [macAddress])
   const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
-  if (secret !== storedSecret) {
+  if (!secretsMatch(secret, storedSecret)) {
     const endTime = performance.now();
     logPerformanceMetrics("Onboarding-API: GetCredentials",startTime, endTime, startDate, new Date());
     return res.status(403).send("No match for gateway/secret");
@@ -193,7 +223,7 @@ app.get("/unclaim", async (req: Request, res: Response) => {
 
   // Checks the secret against the database entry
   const { secret: storedSecret, claimrequested: claimRequested, claimed } = await db.getGateway(macAddress) ?? {};
-  if (secret !== storedSecret) {
+  if (!secretsMatch(secret, storedSecret)) {
     const endTime = performance.now();
     logPerformanceMetrics("Onboarding-API: Unclaim",startTime, endTime, startDate, new Date());
     return res.status(403).send("No match for gateway/secret");
@@ -207,8 +237,8 @@ app.get("/unclaim", async (req: Request, res: Response) => {
     return res.status(400).send("The device is not yet claimed!");
   }
 
-  const onboardingServer = new OnboardingServer();
-  const deleteduser = await onboardingServer.deleteUser(macAddress);
+  // const onboardingServer = new OnboardingServer();
+  // const deleteduser = await onboardingServer.deleteUser(macAddress);
 
   await db.updateGatewayStatus({ macAddress, claimRequested: false, claimed: false });
 
